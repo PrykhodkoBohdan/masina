@@ -122,13 +122,12 @@ void send_html_response(int client_fd) {
         <!-- Resolution Dropdown -->
         <h2>Resolution</h2>
         <select id="resolutionDropdown">
-            <option value="2560x1920">2560x1920</option>
-            <option value="2560x1440">2560x1440</option>
-            <option value="1920x1080">1920x1080</option>
-            <option value="1080x720">1080x720</option>
-            <option value="960x720">960x720</option>
-            <option value="704x576">704x576</option>
-            <option value="640x480">640x480</option>
+            <option value="1920x1080">1920x1080 16:9</option>
+			<option value="1280x720">1280x720 16:9</option>
+			<option value="854x480">854x480 16:9</option>
+			<option value="1440x1080">1440x1080 4:3</option>
+			<option value="960x720">960x720 4:3</option>
+            <option value="640x480">640x480 4:3</option>
         </select>
         
         <!-- Combined FPS Slider -->

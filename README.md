@@ -1,6 +1,9 @@
 # FPV Drone over 4G (Masina V3)
 ## Overview
 
+> [!WARNING]  
+> This this documentation is only for raspberry pi, for OpenIPC hardware you need to wait.
+
 This guide provides detailed instructions on how to build a FPV drone capable of long range flight using a combination of 4G connectivity and/or ELRS radio control. The drone transmits live video feed to a computer over the 4G network with latency as low as 100ms. Operate it using standard Xbox or PlayStation controllers. The system also includes on-screen display (OSD) information, live GPS tracking, and safe handling features in case of a connection loss.
 
 ## Features

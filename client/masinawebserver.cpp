@@ -40,9 +40,9 @@ void handle_combined_fps_request(const std::string& request) {
             std::system(sensor_fps_command.c_str());
 
             // Construct the shell command for Video FPS (using yaml-cli)
-            std::string video_fps_command = "yaml-cli -s .video0.fps " + fps_value;
+            /*std::string video_fps_command = "yaml-cli -s .video0.fps " + fps_value;
             std::cout << "Executing video FPS command: " << video_fps_command << std::endl;
-            std::system(video_fps_command.c_str());
+            std::system(video_fps_command.c_str());*/
         }
     }
 }

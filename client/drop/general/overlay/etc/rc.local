@@ -10,10 +10,10 @@
 # bits.
 #
 # By default this script does nothing.
-ifup wwan0
-sh /usr/bin/update_host.sh
-ifup wg0
-killall -1 majestic
 sleep 5
-echo setfps 0 5 > /proc/mi_modules/mi_sensor/mi_sensor0
+udhcpc -q -i usb0
+sh /usr/bin/update_host.sh
+#killall -1 majestic
+#sleep 5
+#echo setfps 0 5 > /proc/mi_modules/mi_sensor/mi_sensor0
 exit 0

@@ -28,10 +28,13 @@
 #define CRSF_CHANNEL_VALUE_MAX  1811
 #define BUFFER_SIZE 128
 #define RADTODEG(radians) ((radians) * (180.0 / M_PI))
+#define CRSF_CHANNEL_TO_RC(value)  ((value - 1000) * (1792 - 191) / (2000 - 1000) + 191)
 
 int LOCAL_TIMEOUT = 300000;
 int FAILSAFE_TIMEOUT = 5000;
 int STABILIZE_TIMEOUT = 250;
+int ELRS_SWITCH_PIN = 1;
+int HOVER_VALUE = 1200;
 std::string hostname;
 
 int get_cpu_temperature();
@@ -100,6 +103,10 @@ bool readConfig(const std::string& filename) {
 				FAILSAFE_TIMEOUT = std::stoi(value);
 			else if (key == "STABILIZE_TIMEOUT")
 				STABILIZE_TIMEOUT = std::stoi(value);
+			else if (key == "ELRS_SWITCH_PIN")
+				ELRS_SWITCH_PIN = std::stoi(value);
+			else if (key == "HOVER_VALUE")
+				HOVER_VALUE = CRSF_CHANNEL_TO_RC(std::stoi(value));
 		}
 	}
 	return true;
@@ -293,7 +300,8 @@ int main()
 					{
 						//No data for 5m - Switch to local controller
 						std::cerr << "LOCAL_TIMEOUT\n";
-						std::system("gpio clear 10");
+						std::string command = "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
+						std::system(command.c_str());
 					}
 					else if (elapsedTimeValid >= FAILSAFE_TIMEOUT)
 					{
@@ -307,8 +315,8 @@ int main()
 						//std::cerr << "STABILIZE_TIMEOUT\n";
 						channels[0] = CRSF_CHANNEL_VALUE_MID;//ROLL
 						channels[1] = CRSF_CHANNEL_VALUE_MID;//PITCH
-						channels[2] = CRSF_CHANNEL_VALUE_MID;//YAW
-						channels[3] = CRSF_CHANNEL_VALUE_MID;//THROTTLE
+						channels[2] = HOVER_VALUE;//THROTTLE
+						channels[3] = CRSF_CHANNEL_VALUE_MID;//YAW
 						channels[5] = CRSF_CHANNEL_VALUE_MIN;//ANGLE MODE MODE
 
 					}
@@ -363,7 +371,7 @@ int main()
 			else if (bytesRead > 0)
 			{
 				rxBuffer[bytesRead] = '\0';
-				static std::regex regexPattern("N(-?\\d+)RX(-?\\d+)RY(-?\\d+)LX(-?\\d+)LY(-?\\d+)SA(-?\\d+)SB(-?\\d+)SC(-?\\d+)REM(-?\\d+)FSM(-?\\d+)CRC(-?\\d+)\\n");
+				static std::regex regexPattern("N(-?\\d+)RX(-?\\d+)RY(-?\\d+)LY(-?\\d+)LX(-?\\d+)SA(-?\\d+)SB(-?\\d+)SC(-?\\d+)REM(-?\\d+)FSM(-?\\d+)CRC(-?\\d+)\\n");
 				std::cmatch matches;
 				if (std::regex_search(rxBuffer, matches, regexPattern))
 				{
@@ -389,7 +397,8 @@ int main()
 						fsMode = std::stoi(matches[10]) & 1;
 						static bool lastRemoteState = false;
 						if (remote != lastRemoteState) {
-							remote ? std::system("gpio set 10") : std::system("gpio clear 10");
+							std::string command = remote ? "gpio set " + std::to_string(ELRS_SWITCH_PIN) : "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
+							std::system(command.c_str());
 							lastRemoteState = remote;
 						}
 						

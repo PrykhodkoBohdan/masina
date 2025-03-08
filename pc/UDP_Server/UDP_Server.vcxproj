@@ -149,11 +149,17 @@
   <ItemGroup>
     <ClCompile Include="controller.cpp" />
     <ClCompile Include="CRSF.cpp" />
+    <ClCompile Include="draw.cpp" />
     <ClCompile Include="server.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common.h" />
     <ClInclude Include="controller.h" />
+    <ClInclude Include="crsf.h" />
+    <ClInclude Include="draw.h" />
     <ClInclude Include="server.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -90,8 +90,8 @@ std::string Controller::CreatePayload()
 	std::string result = "N" + std::to_string(nPacketNumber) +
 		"RX" + std::to_string(channel[1]) +
 		"RY" + std::to_string(channel[2]) +
-		"LX" + std::to_string(channel[3]) +
-		"LY" + std::to_string(channel[4]) +
+		"LY" + std::to_string(channel[3]) +
+		"LX" + std::to_string(channel[4]) +
 		"SA" + std::to_string(channel[5]) +
 		"SB" + std::to_string(channel[6]) +
 		"SC" + std::to_string(channel[7]) +
@@ -108,5 +108,5 @@ void Controller::Deadzone()
 
 std::wstring Controller::GetFlags()
 {
-	return std::wstring(axis[4]>0 ? L"ARMED\n" : L"DISARMED\n") + std::to_wstring(mapRange(axis[2], -32768, 32767, 1000, 2000))+ L"\n" + (axis[7] >= 0 ? L"FAILSAFE\n" : L"\n") + (failsafeMode ? L"LAND\n" : L"GPS\n") + (remote ? L"4G\n" : L"LOCAL\n");
+	return std::wstring(axis[4]>0 ? L"ARMED\n" : L"DISARMED\n") + std::to_wstring(mapRange(axis[2], -32768, 32767, 1000, 2000))+ L"\n" + (axis[7] >= 0 ? L"FAILSAFE\n" : L"\n") + (failsafeMode ? L"LAND " : L"GPS ") + (remote ? L"4G\n" : L"LOCAL\n");
 }

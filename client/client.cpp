@@ -44,6 +44,7 @@ struct NetworkUsage
 	unsigned long tx_bytes;
 };
 NetworkUsage getNetworkUsage();
+std::string getServingCellInfo();
 void getSignalStrength(int& rssi, int& snr);
 int16_t CRC16(uint16_t* data, size_t length) {
 	uint16_t crc = 0x0000; // Initial value
@@ -193,9 +194,9 @@ void PiTelemetry()
 		unsigned long tx_kbps = static_cast<unsigned long>(tx_diff / bytes_to_kb / interval);
 		int rssi = 0;
 		int snr = 0;
-		getSignalStrength(rssi, snr);
 		std::string telemetryString = "Temp: " + std::to_string(get_cpu_temperature()) + " C, R: " + std::to_string(rx_kbps) + " KB/s, T: " + std::to_string(tx_kbps) + " KB/s, RSSI: " + std::to_string(rssi) + ", SNR: " + std::to_string(snr) + "\n\0";
-
+		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr*)&serverAddr, sizeof(serverAddr));
+		telemetryString = getServingCellInfo();
 		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr*)&serverAddr, sizeof(serverAddr));
 	}
 

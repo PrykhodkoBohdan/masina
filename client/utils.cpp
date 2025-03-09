@@ -127,3 +127,26 @@ void getSignalStrength(int& rssi, int& snr) {
         snr = -1;
     }
 }
+std::string getServingCellInfo() {
+    // Command to send AT command and read response from /dev/ttyUSB2
+    const char* command = "at_command";
+    
+    // Open a pipe to execute the command
+    FILE* fp = popen(command, "r");
+    if (fp == nullptr) {
+        std::cerr << "Failed to run command" << std::endl;
+        return "";
+    }
+
+    // Read the output of the command
+    char buffer[256];
+    std::string output;
+    while (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+        output += buffer;
+    }
+
+    // Close the pipe
+    pclose(fp);
+
+    return output;
+}

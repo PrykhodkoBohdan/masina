@@ -38,6 +38,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+
 void WindowUpdate(HWND hwnd, HWND targetWnd, const char* windowName)
 {
 	InvalidateRect(hwnd, 0, true);
@@ -58,13 +59,30 @@ void WindowUpdate(HWND hwnd, HWND targetWnd, const char* windowName)
 		ShowWindow(hwnd, SW_HIDE);
 	}
 
-	RECT rect;
-	if (GetWindowRect(targetWnd, &rect)) {
-		int width = rect.right - rect.left;
-		int height = rect.bottom - rect.top;
-		SetWindowPos(hwnd, HWND_TOPMOST, rect.left, rect.top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	if (targetWnd)
+	{
+		// Check if target window is in the foreground
+		HWND foregroundWnd = GetForegroundWindow();
+		if (foregroundWnd == targetWnd)
+		{
+			ShowWindow(hwnd, SW_SHOW);  // Show overlay
+		}
+		else
+		{
+			ShowWindow(hwnd, SW_HIDE);  // Hide overlay
+			return; // Skip positioning if hidden
+		}
+
+		RECT rect;
+		if (GetWindowRect(targetWnd, &rect))
+		{
+			int width = rect.right - rect.left;
+			int height = rect.bottom - rect.top;
+			SetWindowPos(hwnd, HWND_TOPMOST, rect.left, rect.top, width, height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+		}
 	}
 }
+
 
 void DrawOutlineText(const wchar_t* text, D2D1_RECT_F rect)
 {

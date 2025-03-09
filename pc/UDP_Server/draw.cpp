@@ -147,6 +147,7 @@ void DrawOverlay(HWND hwnd, const char* telemetryStr) //DrawText already exists
 	std::smatch matches;
 	std::string telemetry(telemetryStr);
 	std::lock_guard<std::mutex> lock(sharedMutex);
+	static std::string QENG;
 	if (std::regex_search(telemetry, matches, pattern))
 	{
 		tel.pi_temp = std::stoi(matches[1]);
@@ -156,6 +157,12 @@ void DrawOverlay(HWND hwnd, const char* telemetryStr) //DrawText already exists
 		tel.pi_snr = std::stoi(matches[5]);
 
 		//swprintf(telemetryBuffer, 128, L"CPU %4d °C\n↓ %4d KB/s\n↑ %4d KB/s\nRSSI: %4d\nSNR: %5d", temp, read_speed, write_speed, rssi, snr);
+	}
+	else if (telemetry.size() >= 6 && telemetry.compare(0, 6, "+QENG:") == 0) 
+	{
+		if (telemetry.size() >= 30) {
+			QENG = telemetry.substr(30);
+		}
 	}
 	static wchar_t leftBuffer[512], centerBuffer[512], rightBuffer[512], centerBottomBuffer[512];
 	time_t currentTime;
@@ -173,7 +180,7 @@ void DrawOverlay(HWND hwnd, const char* telemetryStr) //DrawText already exists
 		tel.pi_temp, tel.pi_read_speed, tel.pi_write_speed, ((float)tel.voltage) / 10, ((float)tel.voltage) / (10 * serCells), ((float)tel.current) / 10, tel.capacity, tel.pi_rssi, tel.pi_snr);
 	swprintf(centerBuffer, 512, L"%s\n%s\n|\n\n\n\n%s", convert_to_wstring(tel.flightMode).c_str(), Compass(tel.heading / 100, tel.latitude, tel.longitude, homeLat, homeLon, pinLat, pinLon).c_str(), bottomText.c_str());
 	swprintf(rightBuffer, 512, L"%s\n\nLat%10.6f\nLon%10.6f\n↕️%4dm 🧭%3d°\n🛰️%4d­­\n⏱%4d km/h\n%3.1f km/h/A\n🏠%5dm\n\n\nP %5.1f°\nR %5.1f°\nY %5.1f°", convert_to_wstring(ctime(&currentTime)).c_str(), ((float)tel.latitude) / 10000000.f, ((float)tel.longitude) / 10000000.f, tel.altitude, tel.heading / 100, tel.satellites, tel.groundspeed / 10, (tel.groundspeed / 10) / (((float)tel.current) / 10), distanceToHome, RADTODEG(tel.pitch) / 10000.f, RADTODEG(tel.roll) / 10000.f, RADTODEG(tel.yaw) / 10000.f);
-	swprintf(centerBottomBuffer, 512, L"%s\n", controller.GetFlags().c_str());
+	swprintf(centerBottomBuffer, 512, L"%s%s\n", controller.GetFlags().c_str(), convert_to_wstring(QENG).c_str());
 
 	pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 	pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);

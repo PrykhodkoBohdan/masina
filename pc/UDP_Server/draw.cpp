@@ -157,7 +157,7 @@ void DrawOverlay(HWND hwnd, const char* telemetryStr) //DrawText already exists
 
 		//swprintf(telemetryBuffer, 128, L"CPU %4d °C\n↓ %4d KB/s\n↑ %4d KB/s\nRSSI: %4d\nSNR: %5d", temp, read_speed, write_speed, rssi, snr);
 	}
-	static wchar_t leftBuffer[512], centerBuffer[512], rightBuffer[512];
+	static wchar_t leftBuffer[512], centerBuffer[512], rightBuffer[512], centerBottomBuffer[512];
 	time_t currentTime;
 	time(&currentTime);
 	std::wstring bottomText;
@@ -171,20 +171,20 @@ void DrawOverlay(HWND hwnd, const char* telemetryStr) //DrawText already exists
 	int distanceToHome = calculateHaversine((double)tel.latitude / 10000000.0, (double)tel.longitude / 10000000.0, homeLat, homeLon);
 	swprintf(leftBuffer, 512, L"🌡️%4d °C\n↓%4d KB/s\n↑%4d KB/s\n\n\n%4.1fV 🔋 %4.2fV\n%4.1fA  %4dmAh\n\nRSSI %4d\nSNR %5d",
 		tel.pi_temp, tel.pi_read_speed, tel.pi_write_speed, ((float)tel.voltage) / 10, ((float)tel.voltage) / (10 * serCells), ((float)tel.current) / 10, tel.capacity, tel.pi_rssi, tel.pi_snr);
-	swprintf(centerBuffer, 512, L"%s\n%s\n|\n\n\n\n%s\n\n\n\n\n\n\n\n\n%s", convert_to_wstring(tel.flightMode).c_str(), Compass(tel.heading / 100, tel.latitude, tel.longitude, homeLat, homeLon, pinLat, pinLon).c_str(), bottomText.c_str(), controller.GetFlags().c_str());
+	swprintf(centerBuffer, 512, L"%s\n%s\n|\n\n\n\n%s", convert_to_wstring(tel.flightMode).c_str(), Compass(tel.heading / 100, tel.latitude, tel.longitude, homeLat, homeLon, pinLat, pinLon).c_str(), bottomText.c_str());
 	swprintf(rightBuffer, 512, L"%s\n\nLat%10.6f\nLon%10.6f\n↕️%4dm 🧭%3d°\n🛰️%4d­­\n⏱%4d km/h\n%3.1f km/h/A\n🏠%5dm\n\n\nP %5.1f°\nR %5.1f°\nY %5.1f°", convert_to_wstring(ctime(&currentTime)).c_str(), ((float)tel.latitude) / 10000000.f, ((float)tel.longitude) / 10000000.f, tel.altitude, tel.heading / 100, tel.satellites, tel.groundspeed / 10, (tel.groundspeed / 10) / (((float)tel.current) / 10), distanceToHome, RADTODEG(tel.pitch) / 10000.f, RADTODEG(tel.roll) / 10000.f, RADTODEG(tel.yaw) / 10000.f);
+	swprintf(centerBottomBuffer, 512, L"%s\n", controller.GetFlags().c_str());
 
-
-
+	pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 	pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 	DrawOutlineText(leftBuffer, layoutRect);
-
 	pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	DrawOutlineText(centerBuffer, layoutRect);
-
 	pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
 	DrawOutlineText(rightBuffer, layoutRect);
-
+	pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR);
+	pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	DrawOutlineText(centerBottomBuffer, layoutRect);
 	pRenderTarget->EndDraw();
 
 	EndPaint(hwnd, &ps);
@@ -200,7 +200,7 @@ void InitD2D(HWND hwnd)
 		DWRITE_FONT_WEIGHT_REGULAR,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		30.0f,
+		28.0f,
 		L"",
 		&pTextFormat);
 }

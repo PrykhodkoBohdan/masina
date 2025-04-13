@@ -1,4 +1,4 @@
-host=10.10.0.8
+host=10.253.0.3
 hostname=yourddns.duckdns.org
 LOCAL_TIMEOUT=300000
 FAILSAFE_TIMEOUT=5000

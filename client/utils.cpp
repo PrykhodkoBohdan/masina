@@ -6,11 +6,13 @@
 #include <chrono>
 #include <cstdlib>
 #include <regex>
+
 struct NetworkUsage
 {
     unsigned long rx_bytes;
     unsigned long tx_bytes;
 };
+
 NetworkUsage getNetworkUsage()
 {
     std::ifstream netDevFile("/proc/net/dev");
@@ -74,37 +76,41 @@ int get_cpu_temperature()
         int temperature = std::stoi(line.substr(pos + 12)); // Extract temperature after "Temperature "
         return temperature;
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "Error: Failed to parse temperature: " << e.what() << std::endl;
         return -1;
     }
 }
 
-void getSignalStrength(int& rssi, int& snr) {
-    const char* command = "qmicli --device=/dev/cdc-wdm0 --nas-get-signal-strength";
+void getSignalStrength(int &rssi, int &snr)
+{
+    const char *command = "qmicli --device=/dev/cdc-wdm0 --nas-get-signal-strength";
 
     // Open a pipe to execute the command
-    FILE* fp = popen(command, "r");
-    if (fp == nullptr) {
+    FILE *fp = popen(command, "r");
+    if (fp == nullptr)
+    {
         std::cerr << "Failed to run command" << std::endl;
-        rssi = -1;  // Return -1 if command fails
-        snr = -1;   // Return -1 if command fails
+        rssi = -1; // Return -1 if command fails
+        snr = -1;  // Return -1 if command fails
         return;
     }
 
     // Read the output of the command line by line
     char buffer[256];
     std::string output;
-    while (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+    while (fgets(buffer, sizeof(buffer), fp) != nullptr)
+    {
         output += buffer;
     }
-	std::cout<< buffer;
+    std::cout << buffer;
     // Close the pipe
     fclose(fp);
 
     // Log the raw output for debugging
-    std::cout << "Command Output:\n" << output << std::endl;
+    std::cout << "Command Output:\n"
+              << output << std::endl;
 
     // Use regex to extract RSSI and SNR values
     std::regex rssiRegex("RSSI:\\s*.*?([-\\d]+) dBm");
@@ -112,28 +118,37 @@ void getSignalStrength(int& rssi, int& snr) {
     std::smatch match;
 
     // Parse RSSI
-    if (std::regex_search(output, match, rssiRegex) && match.size() > 1) {
+    if (std::regex_search(output, match, rssiRegex) && match.size() > 1)
+    {
         rssi = std::stoi(match[1].str());
-    } else {
+    }
+    else
+    {
         std::cerr << "Failed to parse RSSI" << std::endl;
         rssi = -1;
     }
 
     // Parse SNR
-    if (std::regex_search(output, match, snrRegex) && match.size() > 1) {
+    if (std::regex_search(output, match, snrRegex) && match.size() > 1)
+    {
         snr = static_cast<int>(std::stof(match[1].str()));
-    } else {
+    }
+    else
+    {
         std::cerr << "Failed to parse SNR" << std::endl;
         snr = -1;
     }
 }
-std::string getServingCellInfo() {
+
+std::string getServingCellInfo()
+{
     // Command to send AT command and read response from /dev/ttyUSB2
-    const char* command = "at_command";
-    
+    const char *command = "at_command";
+
     // Open a pipe to execute the command
-    FILE* fp = popen(command, "r");
-    if (fp == nullptr) {
+    FILE *fp = popen(command, "r");
+    if (fp == nullptr)
+    {
         std::cerr << "Failed to run command" << std::endl;
         return "";
     }
@@ -141,7 +156,8 @@ std::string getServingCellInfo() {
     // Read the output of the command
     char buffer[256];
     std::string output;
-    while (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+    while (fgets(buffer, sizeof(buffer), fp) != nullptr)
+    {
         output += buffer;
     }
 

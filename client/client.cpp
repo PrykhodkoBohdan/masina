@@ -21,14 +21,14 @@
 #include "/usr/include/asm-generic/ioctls.h"
 #include <errno.h>
 #include <cmath>
-#define CRSF_CHANNEL_VALUE_MIN  172
+#define CRSF_CHANNEL_VALUE_MIN 172
 #define CRSF_CHANNEL_VALUE_1000 191
-#define CRSF_CHANNEL_VALUE_MID  992
+#define CRSF_CHANNEL_VALUE_MID 992
 #define CRSF_CHANNEL_VALUE_2000 1792
-#define CRSF_CHANNEL_VALUE_MAX  1811
+#define CRSF_CHANNEL_VALUE_MAX 1811
 #define BUFFER_SIZE 128
 #define RADTODEG(radians) ((radians) * (180.0 / M_PI))
-#define CRSF_CHANNEL_TO_RC(value)  ((value - 1000) * (1792 - 191) / (2000 - 1000) + 191)
+#define CRSF_CHANNEL_TO_RC(value) ((value - 1000) * (1792 - 191) / (2000 - 1000) + 191)
 
 int LOCAL_TIMEOUT = 300000;
 int FAILSAFE_TIMEOUT = 5000;
@@ -38,24 +38,31 @@ int HOVER_VALUE = 1200;
 std::string hostname;
 
 int get_cpu_temperature();
+void getSignalStrength(int &rssi, int &snr);
+
 struct NetworkUsage
 {
 	unsigned long rx_bytes;
 	unsigned long tx_bytes;
 };
+
 NetworkUsage getNetworkUsage();
 std::string getServingCellInfo();
-void getSignalStrength(int& rssi, int& snr);
-int16_t CRC16(uint16_t* data, size_t length) {
-	uint16_t crc = 0x0000; // Initial value
+
+int16_t CRC16(uint16_t *data, size_t length)
+{
+	uint16_t crc = 0x0000;		  // Initial value
 	uint16_t polynomial = 0x1021; // Polynomial for CRC-16-CCITT
 
-	for (size_t i = 0; i < length; ++i) {
+	for (size_t i = 0; i < length; ++i)
+	{
 		uint16_t current_data = data[i];
-		for (size_t j = 0; j < 16; ++j) {
+		for (size_t j = 0; j < 16; ++j)
+		{
 			bool bit = (current_data >> (15 - j) & 1) ^ ((crc >> 15) & 1);
 			crc <<= 1;
-			if (bit) {
+			if (bit)
+			{
 				crc ^= polynomial;
 			}
 		}
@@ -63,7 +70,8 @@ int16_t CRC16(uint16_t* data, size_t length) {
 
 	return crc;
 }
-uint8_t CRC(const uint8_t* data, size_t start, size_t length)
+
+uint8_t CRC(const uint8_t *data, size_t start, size_t length)
 {
 	uint8_t crc = 0;
 	size_t end = start + length;
@@ -84,18 +92,22 @@ uint8_t CRC(const uint8_t* data, size_t start, size_t length)
 	return crc;
 }
 
-bool readConfig(const std::string& filename) {
+bool readConfig(const std::string &filename)
+{
 	std::ifstream file(filename);
-	if (!file.is_open()) {
+	if (!file.is_open())
+	{
 		std::cerr << "Error: Could not open configuration file " << filename << std::endl;
 		return false;
 	}
 
 	std::string line;
-	while (std::getline(file, line)) {
+	while (std::getline(file, line))
+	{
 		std::istringstream iss(line);
 		std::string key, value;
-		if (std::getline(iss, key, '=') && std::getline(iss, value)) {
+		if (std::getline(iss, key, '=') && std::getline(iss, value))
+		{
 			if (key == "host")
 				hostname = value;
 			else if (key == "LOCAL_TIMEOUT")
@@ -113,11 +125,13 @@ bool readConfig(const std::string& filename) {
 	return true;
 }
 
-int initializeSocket(const std::string& address, int port, struct sockaddr_in& serverAddr) {
+int initializeSocket(const std::string &address, int port, struct sockaddr_in &serverAddr)
+{
 	int sockfd;
-	struct addrinfo hints, * res;
+	struct addrinfo hints, *res;
 
-	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	{
 		perror("Socket creation failed");
 		exit(EXIT_FAILURE);
 	}
@@ -125,23 +139,26 @@ int initializeSocket(const std::string& address, int port, struct sockaddr_in& s
 	memset(&serverAddr, 0, sizeof(serverAddr));
 	memset(&hints, 0, sizeof(hints));
 
-	hints.ai_family = AF_INET;       // IPv4
-	hints.ai_socktype = SOCK_DGRAM;  // UDP
+	hints.ai_family = AF_INET;		// IPv4
+	hints.ai_socktype = SOCK_DGRAM; // UDP
 
 	// Check if the input is an IP address
-	if (inet_pton(AF_INET, address.c_str(), &serverAddr.sin_addr) == 1) {
+	if (inet_pton(AF_INET, address.c_str(), &serverAddr.sin_addr) == 1)
+	{
 		// It's an IP address
 		serverAddr.sin_family = AF_INET;
 	}
-	else {
+	else
+	{
 		// It's a hostname, resolve it
-		if (getaddrinfo(address.c_str(), NULL, &hints, &res) != 0) {
+		if (getaddrinfo(address.c_str(), NULL, &hints, &res) != 0)
+		{
 			perror("getaddrinfo failed");
 			exit(EXIT_FAILURE);
 		}
 
 		// Copy the resolved address to serverAddr
-		serverAddr = *(struct sockaddr_in*)(res->ai_addr);
+		serverAddr = *(struct sockaddr_in *)(res->ai_addr);
 		freeaddrinfo(res);
 	}
 
@@ -154,7 +171,7 @@ int initializeSocket(const std::string& address, int port, struct sockaddr_in& s
 	return sockfd;
 }
 
-void receiveMessages(int sockfd, struct sockaddr_in& serverAddr)
+void receiveMessages(int sockfd, struct sockaddr_in &serverAddr)
 {
 	char buffer[BUFFER_SIZE];
 	socklen_t addrLen = sizeof(serverAddr);
@@ -162,10 +179,9 @@ void receiveMessages(int sockfd, struct sockaddr_in& serverAddr)
 	while (true)
 	{
 		usleep(1000);
-		int len = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&serverAddr, &addrLen);
+		int len = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&serverAddr, &addrLen);
 		if (len == -1)
 		{
-
 		}
 		if (len > 0)
 		{
@@ -174,7 +190,8 @@ void receiveMessages(int sockfd, struct sockaddr_in& serverAddr)
 		}
 	}
 }
-void PiTelemetry()
+
+void OIPCTelemetry()
 {
 	struct sockaddr_in serverAddr;
 	int sockfd = initializeSocket(hostname, 2224, serverAddr);
@@ -195,17 +212,19 @@ void PiTelemetry()
 		int rssi = 0;
 		int snr = 0;
 		std::string telemetryString = "Temp: " + std::to_string(get_cpu_temperature()) + " C, R: " + std::to_string(rx_kbps) + " KB/s, T: " + std::to_string(tx_kbps) + " KB/s, RSSI: " + std::to_string(rssi) + ", SNR: " + std::to_string(snr) + "\n\0";
-		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr*)&serverAddr, sizeof(serverAddr));
+		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr *)&serverAddr, sizeof(serverAddr));
 		telemetryString = getServingCellInfo();
-		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr*)&serverAddr, sizeof(serverAddr));
+		sendto(sockfd, telemetryString.c_str(), telemetryString.length(), 0, (const struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	}
 
 	receiveThread.join();
 	close(sockfd);
 }
+
 int main()
 {
-	if (!readConfig("/root/config.txt")) {
+	if (!readConfig("/root/config.txt"))
+	{
 		return 1;
 	}
 
@@ -214,7 +233,7 @@ int main()
 	std::cout << "FAILSAFE_TIMEOUT: " << FAILSAFE_TIMEOUT << std::endl;
 	std::cout << "STABILIZE_TIMEOUT: " << STABILIZE_TIMEOUT << std::endl;
 
-	std::thread PiTelemetryThread(PiTelemetry);
+	std::thread OIPCTelemetryThread(OIPCTelemetry);
 
 	int serialPort = open("/dev/ttyS2", O_RDWR);
 	int baudrate = 420000;
@@ -232,20 +251,21 @@ int main()
 	tio.c_oflag = 0;
 	tio.c_lflag = 0;
 
-
 	if (ioctl(serialPort, TCSETS2, &tio) != 0)
 		printf("serial error");
 
 	// Set the serial port to non-blocking mode
 	int flags = fcntl(serialPort, F_GETFL, 0);
-	if (flags == -1) {
+	if (flags == -1)
+	{
 		perror("Failed to get file status flags");
 		close(serialPort);
 		return 1;
 	}
 
 	flags |= O_NONBLOCK;
-	if (fcntl(serialPort, F_SETFL, flags) == -1) {
+	if (fcntl(serialPort, F_SETFL, flags) == -1)
+	{
 		perror("Failed to set file status flags");
 		close(serialPort);
 		return 1;
@@ -254,16 +274,17 @@ int main()
 	struct sockaddr_in serverAddr;
 	int sockfd = initializeSocket(hostname, 2223, serverAddr);
 	uint8_t dummybuf[5] = "INIT";
-	sendto(sockfd, dummybuf, 5, 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+	sendto(sockfd, dummybuf, 5, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	std::cout << "INIT SENT";
+
 	while (true)
 	{
 		usleep(1000);
-		static uint16_t channels[16] = { 992, 992, 1716, 992, 191, 191, 191, 191, 997, 997, 997, 997,   0,   0,1811, 1811 };
+		static uint16_t channels[16] = {992, 992, 1716, 992, 191, 191, 191, 191, 997, 997, 997, 997, 0, 0, 1811, 1811};
 		static bool fsMode = false;
 		static auto lastValidPayload = std::chrono::high_resolution_clock::now();
 		static auto lastSentPayload = std::chrono::high_resolution_clock::now();
-		uint8_t serialBuffer[128] = { 0 };
+		uint8_t serialBuffer[128] = {0};
 		int serialReadBytes = read(serialPort, &serialBuffer, sizeof(serialBuffer));
 		try
 		{
@@ -284,13 +305,13 @@ int main()
 			}
 			else
 			{
-				sendto(sockfd, serialBuffer, serialReadBytes, 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+				sendto(sockfd, serialBuffer, serialReadBytes, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 			}
 
 			char rxBuffer[128];
 			sockaddr_in clientAddr{};
 			socklen_t addrLen = sizeof(clientAddr);
-			ssize_t bytesRead = recvfrom(sockfd, rxBuffer, sizeof(rxBuffer), 0, (struct sockaddr*)&clientAddr, &addrLen);
+			ssize_t bytesRead = recvfrom(sockfd, rxBuffer, sizeof(rxBuffer), 0, (struct sockaddr *)&clientAddr, &addrLen);
 			if (bytesRead == -1)
 			{
 				if (errno == EWOULDBLOCK || errno == EAGAIN)
@@ -299,32 +320,31 @@ int main()
 					auto elapsedTimeValid = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastValidPayload).count();
 					if (elapsedTimeValid >= LOCAL_TIMEOUT)
 					{
-						//No data for 5m - Switch to local controller
+						// No data for 5m - Switch to local controller
 						std::cerr << "LOCAL_TIMEOUT\n";
 						std::string command = "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
 						std::system(command.c_str());
 					}
 					else if (elapsedTimeValid >= FAILSAFE_TIMEOUT)
 					{
-						//No data for 5s - Failsafe
-						//std::cerr << "FAILSAFE_TIMEOUT\n";
+						// No data for 5s - Failsafe
+						// std::cerr << "FAILSAFE_TIMEOUT\n";
 						channels[6] = fsMode ? CRSF_CHANNEL_VALUE_2000 : CRSF_CHANNEL_VALUE_MID;
 					}
 					else if (elapsedTimeValid >= STABILIZE_TIMEOUT)
 					{
-						//No data for 250ms - STABILIZE
-						//std::cerr << "STABILIZE_TIMEOUT\n";
-						channels[0] = CRSF_CHANNEL_VALUE_MID;//ROLL
-						channels[1] = CRSF_CHANNEL_VALUE_MID;//PITCH
-						channels[2] = HOVER_VALUE;//THROTTLE
-						channels[3] = CRSF_CHANNEL_VALUE_MID;//YAW
-						channels[5] = CRSF_CHANNEL_VALUE_MIN;//ANGLE MODE MODE
-
+						// No data for 250ms - STABILIZE
+						// std::cerr << "STABILIZE_TIMEOUT\n";
+						channels[0] = CRSF_CHANNEL_VALUE_MID; // ROLL
+						channels[1] = CRSF_CHANNEL_VALUE_MID; // PITCH
+						channels[2] = HOVER_VALUE;			  // THROTTLE
+						channels[3] = CRSF_CHANNEL_VALUE_MID; // YAW
+						channels[5] = CRSF_CHANNEL_VALUE_MIN; // ANGLE MODE MODE
 					}
 					auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastSentPayload).count();
 					if (elapsedTime > 20)
 					{
-						static uint8_t payload[26];// = "\xC8\x18\x16\xE0\x03\x1F\xAD\xC1\xF7\x8B\x5F\xFC\xE2\x17\xE5\x2B\x5F\xF9\xCA\x07\x00\x00\x4C\x7C\xE2\x17";
+						static uint8_t payload[26]; // = "\xC8\x18\x16\xE0\x03\x1F\xAD\xC1\xF7\x8B\x5F\xFC\xE2\x17\xE5\x2B\x5F\xF9\xCA\x07\x00\x00\x4C\x7C\xE2\x17";
 						payload[0] = 0xC8;
 						payload[1] = 0x18;
 						payload[2] = 0x16;
@@ -382,14 +402,14 @@ int main()
 						controls[i] = std::stol(matches[i + 1]) & 0xFFFF;
 					uint16_t crc_recv = std::stoi(matches[11]);
 					uint16_t crc_calc = CRC16(controls, 10);
-					//printf("CRC: recv=%d calc=%d\n", crc_recv, crc_calc);
+					// printf("CRC: recv=%d calc=%d\n", crc_recv, crc_calc);
 					if (crc_recv != crc_calc)
 					{
 						continue;
 					}
-					//Valid payload
+					// Valid payload
 					unsigned long N = std::stol(matches[1]);
-					if (lastN < N)	//In order
+					if (lastN < N) // In order
 					{
 						lastN = N;
 						lastValidPayload = std::chrono::high_resolution_clock::now();
@@ -397,15 +417,12 @@ int main()
 						bool remote = std::stoi(matches[9]) & 1;
 						fsMode = std::stoi(matches[10]) & 1;
 						static bool lastRemoteState = false;
-						if (remote != lastRemoteState) {
+						if (remote != lastRemoteState)
+						{
 							std::string command = remote ? "gpio set " + std::to_string(ELRS_SWITCH_PIN) : "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
 							std::system(command.c_str());
 							lastRemoteState = remote;
 						}
-						
-						/*for(int i = 0;i<10;i++)
-							printf("%d ",controls[i]);
-						printf("\n");*/
 					}
 					else
 					{
@@ -419,17 +436,18 @@ int main()
 				{
 					std::cout << "Received: " << rxBuffer;
 				}
-
 			}
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			std::cerr << "Exception: " << e.what() << std::endl;
 			usleep(10000); // Sleep for 1 second on exception
 		}
 	}
+
 	close(sockfd);
 	close(serialPort);
-	PiTelemetryThread.join();
+	OIPCTelemetryThread.join();
+
 	return 0;
 }

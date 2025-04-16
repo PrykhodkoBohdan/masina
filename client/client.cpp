@@ -35,6 +35,8 @@ int FAILSAFE_TIMEOUT = 5000;
 int STABILIZE_TIMEOUT = 250;
 int ELRS_SWITCH_PIN = 1;
 int HOVER_VALUE = 1200;
+int CONTROL_PORT = 2223;
+int CAM_INFO_PORT = 2224;
 std::string hostname;
 
 int get_cpu_temperature();
@@ -118,6 +120,10 @@ bool readConfig(const std::string &filename)
 				STABILIZE_TIMEOUT = std::stoi(value);
 			else if (key == "ELRS_SWITCH_PIN")
 				ELRS_SWITCH_PIN = std::stoi(value);
+			else if (key == "CONTROL_PORT")
+				CONTROL_PORT = std::stoi(value);
+			else if (key == "CAM_INFO_PORT")
+				CAM_INFO_PORT = std::stoi(value);
 			else if (key == "HOVER_VALUE")
 				HOVER_VALUE = CRSF_CHANNEL_TO_RC(std::stoi(value));
 		}
@@ -180,9 +186,6 @@ void receiveMessages(int sockfd, struct sockaddr_in &serverAddr)
 	{
 		usleep(1000);
 		int len = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&serverAddr, &addrLen);
-		if (len == -1)
-		{
-		}
 		if (len > 0)
 		{
 			buffer[len] = '\0';
@@ -194,7 +197,7 @@ void receiveMessages(int sockfd, struct sockaddr_in &serverAddr)
 void OIPCTelemetry()
 {
 	struct sockaddr_in serverAddr;
-	int sockfd = initializeSocket(hostname, 2224, serverAddr);
+	int sockfd = initializeSocket(hostname, CAM_INFO_PORT, serverAddr);
 
 	std::thread receiveThread(receiveMessages, sockfd, std::ref(serverAddr));
 
@@ -232,6 +235,8 @@ int main()
 	std::cout << "LOCAL_TIMEOUT: " << LOCAL_TIMEOUT << std::endl;
 	std::cout << "FAILSAFE_TIMEOUT: " << FAILSAFE_TIMEOUT << std::endl;
 	std::cout << "STABILIZE_TIMEOUT: " << STABILIZE_TIMEOUT << std::endl;
+	std::cout << "CONTROL_PORT: " << CONTROL_PORT << std::endl;
+	std::cout << "CAM_INFO_PORT: " << CAM_INFO_PORT << std::endl;
 
 	std::thread OIPCTelemetryThread(OIPCTelemetry);
 
@@ -252,7 +257,7 @@ int main()
 	tio.c_lflag = 0;
 
 	if (ioctl(serialPort, TCSETS2, &tio) != 0)
-		printf("serial error");
+		printf("Serial error");
 
 	// Set the serial port to non-blocking mode
 	int flags = fcntl(serialPort, F_GETFL, 0);
@@ -272,7 +277,7 @@ int main()
 	}
 
 	struct sockaddr_in serverAddr;
-	int sockfd = initializeSocket(hostname, 2223, serverAddr);
+	int sockfd = initializeSocket(hostname, CONTROL_PORT, serverAddr);
 	uint8_t dummybuf[5] = "INIT";
 	sendto(sockfd, dummybuf, 5, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	std::cout << "INIT SENT";
@@ -285,7 +290,9 @@ int main()
 		static auto lastValidPayload = std::chrono::high_resolution_clock::now();
 		static auto lastSentPayload = std::chrono::high_resolution_clock::now();
 		uint8_t serialBuffer[128] = {0};
+
 		int serialReadBytes = read(serialPort, &serialBuffer, sizeof(serialBuffer));
+
 		try
 		{
 			if (serialReadBytes < 0)
@@ -311,13 +318,16 @@ int main()
 			char rxBuffer[128];
 			sockaddr_in clientAddr{};
 			socklen_t addrLen = sizeof(clientAddr);
+
 			ssize_t bytesRead = recvfrom(sockfd, rxBuffer, sizeof(rxBuffer), 0, (struct sockaddr *)&clientAddr, &addrLen);
+
 			if (bytesRead == -1)
 			{
 				if (errno == EWOULDBLOCK || errno == EAGAIN)
 				{
 					auto currentTime = std::chrono::high_resolution_clock::now();
 					auto elapsedTimeValid = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastValidPayload).count();
+
 					if (elapsedTimeValid >= LOCAL_TIMEOUT)
 					{
 						// No data for 5m - Switch to local controller
@@ -339,9 +349,11 @@ int main()
 						channels[1] = CRSF_CHANNEL_VALUE_MID; // PITCH
 						channels[2] = HOVER_VALUE;			  // THROTTLE
 						channels[3] = CRSF_CHANNEL_VALUE_MID; // YAW
-						channels[5] = CRSF_CHANNEL_VALUE_MIN; // ANGLE MODE MODE
+						channels[5] = CRSF_CHANNEL_VALUE_MIN; // ANGLE MODE
 					}
+
 					auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastSentPayload).count();
+
 					if (elapsedTime > 20)
 					{
 						static uint8_t payload[26]; // = "\xC8\x18\x16\xE0\x03\x1F\xAD\xC1\xF7\x8B\x5F\xFC\xE2\x17\xE5\x2B\x5F\xF9\xCA\x07\x00\x00\x4C\x7C\xE2\x17";
@@ -372,10 +384,10 @@ int main()
 						payload[24] = ((channels[15] >> 3) & 0xFF);
 						payload[25] = CRC(payload, 2, 0x18 - 1);
 						ssize_t bytes_written = write(serialPort, payload, 26);
-						/*static uint8_t linkPayload[15] = "\xC8\x0C\x14\x10\x17\x64\x05\x00\x01\x01\x00\x00\x00\x59"; //Dummy data
-						bytes_written = write(serialPort, linkPayload, 14);*/
+
 						lastSentPayload = currentTime;
 					}
+
 					usleep(5000);
 				}
 				else
@@ -394,6 +406,7 @@ int main()
 				rxBuffer[bytesRead] = '\0';
 				static std::regex regexPattern("N(-?\\d+)RX(-?\\d+)RY(-?\\d+)LY(-?\\d+)LX(-?\\d+)SA(-?\\d+)SB(-?\\d+)SC(-?\\d+)REM(-?\\d+)FSM(-?\\d+)CRC(-?\\d+)\\n");
 				std::cmatch matches;
+
 				if (std::regex_search(rxBuffer, matches, regexPattern))
 				{
 					static uint16_t controls[10];
@@ -402,11 +415,12 @@ int main()
 						controls[i] = std::stol(matches[i + 1]) & 0xFFFF;
 					uint16_t crc_recv = std::stoi(matches[11]);
 					uint16_t crc_calc = CRC16(controls, 10);
-					// printf("CRC: recv=%d calc=%d\n", crc_recv, crc_calc);
+
 					if (crc_recv != crc_calc)
 					{
 						continue;
 					}
+
 					// Valid payload
 					unsigned long N = std::stol(matches[1]);
 					if (lastN < N) // In order
@@ -417,6 +431,7 @@ int main()
 						bool remote = std::stoi(matches[9]) & 1;
 						fsMode = std::stoi(matches[10]) & 1;
 						static bool lastRemoteState = false;
+
 						if (remote != lastRemoteState)
 						{
 							std::string command = remote ? "gpio set " + std::to_string(ELRS_SWITCH_PIN) : "gpio clear " + std::to_string(ELRS_SWITCH_PIN);

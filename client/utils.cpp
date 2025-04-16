@@ -156,6 +156,7 @@ std::string getServingCellInfo()
     // Read the output of the command
     char buffer[256];
     std::string output;
+    
     while (fgets(buffer, sizeof(buffer), fp) != nullptr)
     {
         output += buffer;

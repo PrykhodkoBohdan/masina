@@ -92,6 +92,7 @@ std::string read_serial_response(int fd)
 int main()
 {
     int fd = open(SERIAL_PORT.c_str(), O_RDWR | O_NOCTTY);
+    
     if (fd == -1)
     {
         std::cerr << "Open error: " << strerror(errno) << std::endl;

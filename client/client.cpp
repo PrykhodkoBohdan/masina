@@ -51,49 +51,6 @@ struct NetworkUsage
 NetworkUsage getNetworkUsage();
 std::string getServingCellInfo();
 
-int16_t CRC16(uint16_t *data, size_t length)
-{
-	uint16_t crc = 0x0000;		  // Initial value
-	uint16_t polynomial = 0x1021; // Polynomial for CRC-16-CCITT
-
-	for (size_t i = 0; i < length; ++i)
-	{
-		uint16_t current_data = data[i];
-		for (size_t j = 0; j < 16; ++j)
-		{
-			bool bit = (current_data >> (15 - j) & 1) ^ ((crc >> 15) & 1);
-			crc <<= 1;
-			if (bit)
-			{
-				crc ^= polynomial;
-			}
-		}
-	}
-
-	return crc;
-}
-
-uint8_t CRC(const uint8_t *data, size_t start, size_t length)
-{
-	uint8_t crc = 0;
-	size_t end = start + length;
-
-	for (std::size_t i = start; i < end; ++i)
-	{
-		crc ^= data[i];
-
-		for (uint8_t j = 0; j < 8; ++j)
-		{
-			if (crc & 0x80)
-				crc = (crc << 1) ^ 0xD5;
-			else
-				crc <<= 1;
-		}
-	}
-
-	return crc;
-}
-
 bool readConfig(const std::string &filename)
 {
 	std::ifstream file(filename);
@@ -295,9 +252,7 @@ int main()
 	while (true)
 	{
 		usleep(1000);
-		static uint16_t channels[16] = {992, 992, 1716, 992, 191, 191, 191, 191, 997, 997, 997, 997, 0, 0, 1811, 1811};
-		static uint16_t crsfPacket[26] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-		static bool fsMode = false;
+		static uint8_t crsfPacket[26] = {0};
 		static auto lastValidPayload = std::chrono::high_resolution_clock::now();
 		static auto lastSentPayload = std::chrono::high_resolution_clock::now();
 		uint8_t serialBuffer[128] = {0};
@@ -326,7 +281,7 @@ int main()
 				sendto(sockfd, serialBuffer, serialReadBytes, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 			}
 
-			char rxBuffer[128];
+			uint8_t rxBuffer[128];
 			sockaddr_in clientAddr{};
 			socklen_t addrLen = sizeof(clientAddr);
 
@@ -350,19 +305,19 @@ int main()
 					{
 						// No data for 5s - Failsafe
 						// std::cerr << "FAILSAFE_TIMEOUT\n";
-						channels[7] = fsMode ? CRSF_CHANNEL_VALUE_2000 : CRSF_CHANNEL_VALUE_1000;
+						// Failsafe packet
+						uint8_t crsfFSPacket[26] = { 200, 24, 22, 224, 3, 31, 248, 192, 39, 112, 129, 203, 66, 224, 224, 3, 31, 248, 192, 7, 62, 240, 129, 15, 124, 73 };
+
+						memcpy(crsfPacket, crsfFSPacket, 26);
 					}
 					else if (elapsedTimeValid >= STABILIZE_TIMEOUT)
 					{
 						// No data for 250ms - STABILIZE
 						// std::cerr << "STABILIZE_TIMEOUT\n";
-						channels[0] = CRSF_CHANNEL_VALUE_MID;   // ROLL
-						channels[1] = CRSF_CHANNEL_VALUE_MID;   // PITCH
-						channels[2] = HOVER_VALUE;              // THROTTLE
-						channels[3] = CRSF_CHANNEL_VALUE_MID;   // YAW
-						channels[4] = CRSF_CHANNEL_VALUE_2000;  // ARMED
-						channels[5] = CRSF_CHANNEL_VALUE_2000;  // ANGLE MODE
-						channels[6] = CRSF_CHANNEL_VALUE_1000;  // ALT HOLD MODE
+						// Stabilize packet
+						uint8_t crsfStabPacket[26] = { 200, 24, 22, 224, 3, 31, 248, 192, 39, 112, 129, 203, 66, 22, 224, 3, 31, 248, 192, 7, 62, 240, 129, 15, 124, 173 };
+
+						memcpy(crsfPacket, crsfStabPacket, 26);
 					}
 
 					auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastSentPayload).count();
@@ -370,6 +325,10 @@ int main()
 					if (elapsedTime > 20)
 					{
 						ssize_t bytes_written = write(serialPort, crsfPacket, 26);
+
+						if (bytes_written < 0) {
+							std::cout << "Failed to write to serial port" << std::endl;
+						}
 
 						lastSentPayload = currentTime;
 					}
@@ -387,12 +346,14 @@ int main()
 				std::cout << "Connection closed by the server" << std::endl;
 				usleep(100000);
 			}
-			else if (bytesRead > 0)
+			else if (bytesRead == 26)
 			{
-                                lastValidPayload = std::chrono::high_resolution_clock::now();
+				lastValidPayload = std::chrono::high_resolution_clock::now();
 
-                                memcpy(crsfPacket, rxBuffer, 26);
-			}
+				memcpy(crsfPacket, rxBuffer, 26);
+			} else {
+				std::cerr << "Received invalid packet size: " << bytesRead << " bytes\n";
+            }
 		}
 		catch (const std::exception &e)
 		{

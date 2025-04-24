@@ -231,6 +231,7 @@ int main()
 		return 1;
 	}
 
+	std::cout << "QuadroFleet Masina" << std::endl;
 	std::cout << "Using hostname: " << hostname << std::endl;
 	std::cout << "LOCAL_TIMEOUT: " << LOCAL_TIMEOUT << std::endl;
 	std::cout << "FAILSAFE_TIMEOUT: " << FAILSAFE_TIMEOUT << std::endl;
@@ -282,10 +283,20 @@ int main()
 	sendto(sockfd, dummybuf, 5, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	std::cout << "INIT SENT";
 
+	int recvSock = socket(AF_INET, SOCK_DGRAM, 0);
+	sockaddr_in localAddr{};
+	localAddr.sin_family = AF_INET;
+	localAddr.sin_port = htons(CONTROL_PORT);
+	localAddr.sin_addr.s_addr = INADDR_ANY;
+	int recvFlags = fcntl(recvSock, F_GETFL, 0);
+	fcntl(recvSock, F_SETFL, recvFlags | O_NONBLOCK);
+	bind(recvSock, (sockaddr*)&localAddr, sizeof(localAddr));
+
 	while (true)
 	{
 		usleep(1000);
 		static uint16_t channels[16] = {992, 992, 1716, 992, 191, 191, 191, 191, 997, 997, 997, 997, 0, 0, 1811, 1811};
+		static uint16_t crsfPacket[26] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		static bool fsMode = false;
 		static auto lastValidPayload = std::chrono::high_resolution_clock::now();
 		static auto lastSentPayload = std::chrono::high_resolution_clock::now();
@@ -319,7 +330,7 @@ int main()
 			sockaddr_in clientAddr{};
 			socklen_t addrLen = sizeof(clientAddr);
 
-			ssize_t bytesRead = recvfrom(sockfd, rxBuffer, sizeof(rxBuffer), 0, (struct sockaddr *)&clientAddr, &addrLen);
+			ssize_t bytesRead = recvfrom(recvSock, rxBuffer, sizeof(rxBuffer), 0, (struct sockaddr *)&clientAddr, &addrLen);
 
 			if (bytesRead == -1)
 			{
@@ -331,7 +342,7 @@ int main()
 					if (elapsedTimeValid >= LOCAL_TIMEOUT)
 					{
 						// No data for 5m - Switch to local controller
-						std::cerr << "LOCAL_TIMEOUT\n";
+						// std::cerr << "LOCAL_TIMEOUT\n";
 						std::string command = "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
 						std::system(command.c_str());
 					}
@@ -339,51 +350,26 @@ int main()
 					{
 						// No data for 5s - Failsafe
 						// std::cerr << "FAILSAFE_TIMEOUT\n";
-						channels[6] = fsMode ? CRSF_CHANNEL_VALUE_2000 : CRSF_CHANNEL_VALUE_MID;
+						channels[7] = fsMode ? CRSF_CHANNEL_VALUE_2000 : CRSF_CHANNEL_VALUE_1000;
 					}
 					else if (elapsedTimeValid >= STABILIZE_TIMEOUT)
 					{
 						// No data for 250ms - STABILIZE
 						// std::cerr << "STABILIZE_TIMEOUT\n";
-						channels[0] = CRSF_CHANNEL_VALUE_MID; // ROLL
-						channels[1] = CRSF_CHANNEL_VALUE_MID; // PITCH
-						channels[2] = HOVER_VALUE;			  // THROTTLE
-						channels[3] = CRSF_CHANNEL_VALUE_MID; // YAW
-						channels[5] = CRSF_CHANNEL_VALUE_MIN; // ANGLE MODE
+						channels[0] = CRSF_CHANNEL_VALUE_MID;   // ROLL
+						channels[1] = CRSF_CHANNEL_VALUE_MID;   // PITCH
+						channels[2] = HOVER_VALUE;              // THROTTLE
+						channels[3] = CRSF_CHANNEL_VALUE_MID;   // YAW
+						channels[4] = CRSF_CHANNEL_VALUE_2000;  // ARMED
+						channels[5] = CRSF_CHANNEL_VALUE_2000;  // ANGLE MODE
+						channels[6] = CRSF_CHANNEL_VALUE_1000;  // ALT HOLD MODE
 					}
 
 					auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastSentPayload).count();
 
 					if (elapsedTime > 20)
 					{
-						static uint8_t payload[26]; // = "\xC8\x18\x16\xE0\x03\x1F\xAD\xC1\xF7\x8B\x5F\xFC\xE2\x17\xE5\x2B\x5F\xF9\xCA\x07\x00\x00\x4C\x7C\xE2\x17";
-						payload[0] = 0xC8;
-						payload[1] = 0x18;
-						payload[2] = 0x16;
-						payload[3] = (channels[0] & 0xFF);
-						payload[4] = ((channels[0] >> 8) & 0x07) | ((channels[1] & 0x1F) << 3);
-						payload[5] = ((channels[1] >> 5) & 0x3F) | ((channels[2] & 0x03) << 6);
-						payload[6] = ((channels[2] >> 2) & 0xFF);
-						payload[7] = ((channels[2] >> 10) & 0x01) | ((channels[3] & 0x7F) << 1);
-						payload[8] = ((channels[3] >> 7) & 0x0F) | ((channels[4] & 0x0F) << 4);
-						payload[9] = ((channels[4] >> 4) & 0x7F) | ((channels[5] & 0x01) << 7);
-						payload[10] = ((channels[5] >> 1) & 0xFF);
-						payload[11] = ((channels[5] >> 9) & 0x03) | ((channels[6] & 0x3F) << 2);
-						payload[12] = ((channels[6] >> 6) & 0x1F) | ((channels[7] & 0x07) << 5);
-						payload[13] = ((channels[7] >> 3) & 0xFF);
-						payload[14] = (channels[8] & 0xFF);
-						payload[15] = ((channels[8] >> 8) & 0x07) | ((channels[9] & 0x1F) << 3);
-						payload[16] = ((channels[9] >> 5) & 0x3F) | ((channels[10] & 0x03) << 6);
-						payload[17] = ((channels[10] >> 2) & 0xFF);
-						payload[18] = ((channels[10] >> 10) & 0x01) | ((channels[11] & 0x7F) << 1);
-						payload[19] = ((channels[11] >> 7) & 0x0F) | ((channels[12] & 0x0F) << 4);
-						payload[20] = ((channels[12] >> 4) & 0x7F) | ((channels[13] & 0x01) << 7);
-						payload[21] = ((channels[13] >> 1) & 0xFF);
-						payload[22] = ((channels[13] >> 9) & 0x03) | ((channels[14] & 0x3F) << 2);
-						payload[23] = ((channels[14] >> 6) & 0x1F) | ((channels[15] & 0x07) << 5);
-						payload[24] = ((channels[15] >> 3) & 0xFF);
-						payload[25] = CRC(payload, 2, 0x18 - 1);
-						ssize_t bytes_written = write(serialPort, payload, 26);
+						ssize_t bytes_written = write(serialPort, crsfPacket, 26);
 
 						lastSentPayload = currentTime;
 					}
@@ -403,54 +389,9 @@ int main()
 			}
 			else if (bytesRead > 0)
 			{
-				rxBuffer[bytesRead] = '\0';
-				static std::regex regexPattern("N(-?\\d+)RX(-?\\d+)RY(-?\\d+)LY(-?\\d+)LX(-?\\d+)SA(-?\\d+)SB(-?\\d+)SC(-?\\d+)REM(-?\\d+)FSM(-?\\d+)CRC(-?\\d+)\\n");
-				std::cmatch matches;
+                                lastValidPayload = std::chrono::high_resolution_clock::now();
 
-				if (std::regex_search(rxBuffer, matches, regexPattern))
-				{
-					static uint16_t controls[10];
-					static unsigned long lastN = 0;
-					for (int i = 0; i < 10; i++)
-						controls[i] = std::stol(matches[i + 1]) & 0xFFFF;
-					uint16_t crc_recv = std::stoi(matches[11]);
-					uint16_t crc_calc = CRC16(controls, 10);
-
-					if (crc_recv != crc_calc)
-					{
-						continue;
-					}
-
-					// Valid payload
-					unsigned long N = std::stol(matches[1]);
-					if (lastN < N) // In order
-					{
-						lastN = N;
-						lastValidPayload = std::chrono::high_resolution_clock::now();
-						memcpy(channels, controls + 1, 8 * sizeof(uint16_t));
-						bool remote = std::stoi(matches[9]) & 1;
-						fsMode = std::stoi(matches[10]) & 1;
-						static bool lastRemoteState = false;
-
-						if (remote != lastRemoteState)
-						{
-							std::string command = remote ? "gpio set " + std::to_string(ELRS_SWITCH_PIN) : "gpio clear " + std::to_string(ELRS_SWITCH_PIN);
-							std::system(command.c_str());
-							lastRemoteState = remote;
-						}
-					}
-					else
-					{
-						auto currentTime = std::chrono::high_resolution_clock::now();
-						auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currentTime - lastValidPayload).count();
-						if (elapsedTime >= 2)
-							lastN = 0;
-					}
-				}
-				else
-				{
-					std::cout << "Received: " << rxBuffer;
-				}
+                                memcpy(crsfPacket, rxBuffer, 26);
 			}
 		}
 		catch (const std::exception &e)

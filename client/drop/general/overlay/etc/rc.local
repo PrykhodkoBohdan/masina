@@ -12,9 +12,24 @@
 # By default this script does nothing.
 sleep 2
 udhcpc -q -i usb0
-sh /usr/bin/update_host.sh
 ifup wg0
-#killall -1 majestic
-#sleep 5
-#echo setfps 0 5 > /proc/mi_modules/mi_sensor/mi_sensor0
+
+while ! ip addr show usb0 | grep -q "inet "; do
+    echo "Wait for IP on usb0..."
+    sleep 2
+done
+
+MAX_TRIES=120
+COUNT=0
+until ping -c1 -W1 10.253.0.1 >/dev/null 2>&1 || [ "$COUNT" -ge "$MAX_TRIES" ]; do
+    wg setconf wg0 /etc/wireguard.conf
+    sleep 1
+    COUNT=$((COUNT + 1))
+done
+
+# 10.253.0.1 - WireGuard server internal IP
+if ping -c1 -W1 10.253.0.1 >/dev/null 2>&1; then
+    killall -1 majestic
+fi
+
 exit 0

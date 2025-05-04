@@ -14,13 +14,16 @@ sleep 2
 udhcpc -q -i usb0
 ifup wg0
 
+# Wait for the network interface to be up
 while ! ip addr show usb0 | grep -q "inet "; do
     echo "Wait for IP on usb0..."
     sleep 2
 done
 
+# Wait for the network to be up
 MAX_TRIES=120
 COUNT=0
+# 10.253.0.1 - WireGuard server internal IP
 until ping -c1 -W1 10.253.0.1 >/dev/null 2>&1 || [ "$COUNT" -ge "$MAX_TRIES" ]; do
     wg setconf wg0 /etc/wireguard.conf
     sleep 1

@@ -34,7 +34,6 @@ int LOCAL_TIMEOUT = 300000;
 int FAILSAFE_TIMEOUT = 5000;
 int STABILIZE_TIMEOUT = 250;
 int ELRS_SWITCH_PIN = 1;
-int HOVER_VALUE = 1200;
 int CONTROL_PORT = 2223;
 int CAM_INFO_PORT = 2224;
 std::string hostname;
@@ -81,8 +80,6 @@ bool readConfig(const std::string &filename)
 				CONTROL_PORT = std::stoi(value);
 			else if (key == "CAM_INFO_PORT")
 				CAM_INFO_PORT = std::stoi(value);
-			else if (key == "HOVER_VALUE")
-				HOVER_VALUE = CRSF_CHANNEL_TO_RC(std::stoi(value));
 		}
 	}
 	return true;

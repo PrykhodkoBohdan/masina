@@ -1,94 +1,94 @@
-# FPV Drone over 4G (Masina V3)
+# FPV Drone over 4G (QuadroFleet + Masina V3)
+
 ## Overview
 
-> [!WARNING]  
-> This this documentation is only for raspberry pi, for OpenIPC hardware you need to wait.
+This project provides a step-by-step guide to building an FPV drone capable of long-range operation over a 4G network.
+It streams live video to a remote computer with latency typically under 100 ms.
 
-This guide provides detailed instructions on how to build a FPV drone capable of long range flight using a combination of 4G connectivity and/or ELRS radio control. The drone transmits live video feed to a computer over the 4G network with latency as low as 100ms. Operate it using standard Xbox or PlayStation controllers. The system also includes on-screen display (OSD) information, live GPS tracking, and safe handling features in case of a connection loss.
+The drone is controlled via a gamepad (Xbox or PlayStation) or a standard RC transmitter connected to the ground station (computer) via USB.
+Key features include live video with on-screen telemetry, GPS tracking on an interactive map, and automated safety behaviors in the event of connectivity loss.
 
 ## Features
-* **Dual Control:** Control a drone using either an ELRS transmitter for local control or a 4G modem for remote control.
-* **Low Latency Video:** Real time video transmission with minimal delay (100ms, 140ms for HD).
-* **Safe connection disruptions handling**: Hover then Land/Return to launch.
-* **Real time GPS Tracking:** Track drone location live using a Traccar server.
-* **Backup GPS Tracking via SMS:** Track drone location using SMS commands, in case of loss of signal/electronics failure.
-* **Extended Range:** Achieve significantly greater range through 4G compared to traditional radio control.
-* **On screen display (OSD):** Telemetry data overlaid on the video feed, including: **Battery Level, Compass, GPS Coordinates, Speed**.
 
-### Explanation
-A Raspberry Pi communicates with a remote server (PC) using UDP sockets, relaying Crossfire (CRSF) telemetry data from the flight controller to the server. A server (PC) reads the positions of analog sticks (thrust, pitch, roll, and yaw) from a controller and sends this information to the Raspberry Pi. The Pi then encodes the received data into valid Crossfire protocol frames and sends them to the flight controller via the serial port. On the PC, telemetry data is decoded and parsed from the Crossfire telemetry frames, overlaying this information onto a video window. The system includes safety mechanisms such as CRC-based error detection, reconnection protection, and out-of-order data handling. If the connection is lost for more than 250 ms, the drone stabilizes, and if the connection is not reestablished within 10 seconds, the drone either lands or returns to its launch point, according to the user's settings.
+* **Low Latency Video:** Real-time video feed with latency <100 ms.
+* **Connection Loss Handling:** Automatic hover, land, or Return-To-Home (RTH) when link is lost.
+* **Live GPS Tracking:** Displays real-time drone location using OpenStreetMap.
+* **Extended Range:** Significantly longer range compared to traditional 2.4GHz radio systems by using cellular networks.
+* **On-Screen Display (OSD):** Telemetry such as battery voltage, compass heading, GPS coordinates, speed, and altitude is overlaid on the video.
 
-## Videos
-#### [Successful 20km drone flight | FPV over 4G - YouTube](https://youtu.be/IMyPImF74hA)
-[![20km flight](https://img.youtube.com/vi/IMyPImF74hA/0.jpg)](https://youtu.be/IMyPImF74hA "20km flight")
+## System Architecture
 
-#### [13km flight, working almost too well | FPV over 4G - YouTube](https://youtu.be/IEeil4s7mzk)
-[![13km flight](https://img.youtube.com/vi/IEeil4s7mzk/0.jpg)](https://youtu.be/IEeil4s7mzk "13km flight")
+1. **Video & Telemetry Uplink**
+   An OpenIPC-based camera streams video and handles control communication over a secure WireGuard VPN using UDP sockets.
+   It transmits and receives Crossfire (CRSF) telemetry data via UART to/from the flight controller.
 
-#### [Full control + video over 4G FPV - YouTube](https://youtu.be/Cio6WwT3rgs)
-[![Full control + video over 4G](https://img.youtube.com/vi/Cio6WwT3rgs/0.jpg)](https://youtu.be/Cio6WwT3rgs "Full control + video over 4G FPV")
+2. **Ground Station — *QuadroFleet* (Operator Side)**
 
-#### [Variable bitrate in action | FPV over 4G - YouTube](https://youtu.be/rRw1hKG7MNs)
-[![Variable bitrate](https://img.youtube.com/vi/rRw1hKG7MNs/0.jpg)](https://youtu.be/rRw1hKG7MNs "Variable bitrate")
+   * Establishes a secure VPN tunnel to the drone using WireGuard.
+   * Reads joystick input (throttle, pitch, roll, yaw) from a connected gamepad or RC transmitter.
+   * Encodes input into CRSF channel frames and sends them to the drone via UDP.
+   * Receives and decodes telemetry data from the drone.
+   * Overlays telemetry on the live video stream and updates the drone's position on an interactive map.
+
+3. **Drone**
+
+   * Connects to the ground station over WireGuard VPN.
+   * Receives CRSF control frames via UDP and forwards them to the flight controller via UART.
+   * Collects telemetry from the flight controller and sends it back to the ground station over UDP.
+   * Streams the video feed in H.265 format to the ground station using UDP.
+
+4. **Safety & Resilience**
+
+   * If the connection is lost for more than 250 ms (configurable), the drone switches to hover mode.
+   * If communication is not restored within 5 seconds (configurable), the drone performs an automatic landing or Return-To-Home (RTH), based on flight controller settings.
 
 ## Legal Compliance Notice:
-***Before operating your FPV drone, it is crucial to check and comply with all local laws and regulations related to drone usage, especially those concerning airspace, privacy, and the use of wireless communication systems. Ignoring these laws can lead to serious legal consequences, including fines or other penalties. Always ensure that your drone operations are within the boundaries of the law to promote safe and responsible flying.***
+**This device lets you control drones over 4G networks, making long-distance control possible. But before you jump into using this technology, it's essential to know the rules and regulations in your country. In many places, like Europe and the US, there are strict laws about how drones can be used. For example, flying a drone beyond your line of sight (VLOS) might be restricted unless you have special permissions. It's strongly recommended to check the laws and regulations where you plan to use your drone. It's your responsibility to follow the rules and ensure you're flying legally. Breaking these rules can lead to legal trouble, so stay safe and fly responsibly!**
 
 ## Images
 ![Front](images/front.png "Front")
 ![Left](images/left.png "Left")
 ![Right](images/right.png "Right")
-## Prerequisites
-* Make sure you have access to your router's port forwarding settings.
-* Stable internet connection at home.
-* Reliable 4G coverage, internet speed 200kB/s and more recommended.
-* SIM card with enough data.
-* Configured betaflight on your drone.
-* [GStreamer](https://gstreamer.freedesktop.org/download) installed on your system (MSVC 64-bit runtime and development) and Visual Studio.
-* Intermediate soldering knowledge.
 
-## Tools
-* Soldering iron
-* 3D printer or cardboard, tape and hotglue
-* Li-ion spotwelder - Needed if you plan to create your own battery pack.
-* Screwdriver and Hexagon Allen Keys
-* Wires
-* SD card reader
+## Prerequisites
+
+Before getting started, ensure the following requirements are met:
+
+* Access to a configured **WireGuard VPN** server (used for secure communication between drone and ground station).
+* A stable **internet connection** on the ground station (QuadroFleet application).
+* **Reliable 4G coverage** at the drone’s location with at least **200 kB/s** sustained upload speed (higher recommended).
+* A **data-enabled SIM card** with a sufficient monthly quota.
+* A flight controller running a properly configured version of **BetaFlight** or **iNAV** (with UART CRSF enabled).
+* **GStreamer** installed on the ground station:
+  Download the [MSVC 64-bit runtime and development packages](https://gstreamer.freedesktop.org/download) if using Windows.
 
 ## Hardware
-1. Drone
-    1. [Mark4 7-inch clone frame](https://www.aliexpress.com/item/1005006288716729.html) - 16€
-    2. [FPVKING X2807 2807 1300KV](https://www.aliexpress.com/item/1005006401886065.html) / [Eachine Tyro129 2507 1800KV](https://www.aliexpress.com/item/1005004629318899) - 35€
-    3. [F4 Flight Controller + 60A ESC](https://www.aliexpress.com/item/1005005595770342.html) - 50€
-    4. [HQPROP 7X4X3 7040](https://www.aliexpress.com/item/1005007190275766.html) / [Dalprop Racerstar CYCLONE T7056C](https://www.aliexpress.com/item/1005001565618746.html) - 5€ for 2pairs
-    5. (optional although, highly recommend) [M10 GPS](https://www.aliexpress.com/item/1005006454375770) - 16€
-    6. probably some M3 screws
-2. Raspberry Pi Zero 2W - 18€
-3. Huawei E3372 4G usb modem - 30€ (used)
-4. [Raspberry Camera V1 IR](https://www.aliexpress.com/item/1005003386791483.html) 160° - 8€ / 130° - 5€
-5. [8cm Raspberry Pi zero camera cable](https://www.aliexpress.com/item/1005002969357117.html) - 1€
-6. [5V buck converter](https://www.aliexpress.com/item/32905033708.html) - 2€
-7. xbox/playstation/fpv controller
-8. 4S/5S Battery pack - buy (40-90€) or diy
-    1. [Samsung INR21700-40T (40T3) 4000mAh - 35A](https://eu.nkon.nl/rechargeable/li-ion/21700-20700-size/samsung-inr21700-40t-40t3-4000mah-35a-reclaimed.html) 3,85€/cell
-    2. [Sanyo NCR2070C 20700 3620mAh - 30A](https://eu.nkon.nl/sanyo-ncr2070c-clear.html) 3,45€/cell
-    3. [Molicel INR21700-P45B 4500mAh - 45A](https://eu.nkon.nl/molicel-inr21700-p45b-4500mah-45a.html?gad_source=1&gclid=CjwKCAjw8fu1BhBsEiwAwDrsjMbNsElHF3OUJdrsFNVPzGd-a7uBI8tSW-Qr7JhOOwf1EgZ946oXIRoClEEQAvD_BwE) - 6,65€/cell
-    4. [**Pure** nickel stripes 5x0.2mm or 5x0.1/0.12mm](https://www.aliexpress.com/item/1005005509648053.html)
-    5. [XT60 cable](https://www.aliexpress.com/item/1005006020931792.html?spm=a2g0o.order_list.order_list_main.107.5dc71802m9YITy) - 1€
-    6. [balance connector](https://www.aliexpress.com/item/1005003768479001.html?spm=a2g0o.order_list.order_list_main.52.157c1802qMqatu) - 1€
-    7. [21700 cell plastic holder](https://www.aliexpress.com/item/1005005581981633.html?spm=a2g0o.order_list.order_list_main.71.157c1802qMqatu) - 2€ or 3D print
-    6. spot welder - 30€
-    7. [Fiberglass tape](https://www.aliexpress.com/item/1005003745597544.html)  - 5€ / any other strong tape
-9. SIM card with mobile data
-10. microSD card  8GB+ 
-11. [GPS Tracker for recovery](https://github.com/danielbanar/A9G-GPS-tracker) (optional)
-12. 9. ELRS control (optional)
-    1. ELRS Receiver - 12€
-    2. ELRS Controller (e.g. Radiomaster pocket 2.4GHz 250mW) - 70€
-    3. [TS5A23157 Switch Module](https://www.aliexpress.com/item/1005005946760421.html) - 2€
 
-## Schematics
-![Schematics](images/schematics_transparent.png "Schematics")
+1. Drone base
+    1. [Mark4 7-inch frame](https://aliexpress.com/item/1005007050005578.html) - 16 €
+    2. [iFlight XING E Pro 2207 1800KV 6S](https://aliexpress.com/item/1005006356256645.html) - 50 €
+    3. [SpeedyBee F405 V4 FC 55A ESC Stack](https://aliexpress.com/item/1005006809684035.html) - 80 €
+    4. [Gemfan Hurrikan MCK v2](https://aliexpress.com/item/1005006741863428.html) - 3 € for 2 pairs
+    5. (optional although highly recommended) [GEP-M10Q](https://aliexpress.com/item/1005004752373178.html) - 25 €
+2. [SSC30KQ + 1.7mm](https://de.aliexpress.com/item/1005006835439125.html) - 27 €
+3. [Quectel EC25](https://de.aliexpress.com/item/1005002330780040.html) - 40 €
+6. [DC-DC 12V-5V 3A Buck Converter](https://de.aliexpress.com/item/1005002163078645.html) - 2 €
+7. [4G FPC-Antenna Signal Booster](https://de.aliexpress.com/item/1005004592746304.html) - 2 €
+8. XBox/Playstation/FPV remote controller
+9. 3S/6S Battery pack - 20-90 € or DIY
+10. SIM Card with enough mobile data
+11. Wires and connectors TODO
+
+| Category               | Components Included                   | Approx. Cost (€)       |
+| ---------------------- | ------------------------------------- |------------------------|
+| **Drone Frame & Core** | Frame, Motors, FC + ESC, Props, GPS   | 174 €                  |
+| **Video System**       | Camera module, 4G modem, antenna      | 69 €                   |
+| **Power System**       | Buck converter, battery (3S–6S)       | 22–92 €                |
+| **Miscellaneous**      | Wiring, connectors, mounting hardware | \~10 €                 |
+|                        |                                       | **Total: \~275–345 €** |
+
+## Wiring
+![Wiring](images/wiring.png "Wiring")
 
 ## Setup
 ### Preparing the SD Card
@@ -99,7 +99,6 @@ A Raspberry Pi communicates with a remote server (PC) using UDP sockets, relayin
 * Configure Wi-Fi settings.
 * Save your settings and click Write to flash the SD card.
 * Eject the SD card and insert it into your Raspberry Pi.
-
 
 ### Preparing the Raspberry Pi
 1. Plug the camera to the CSI port.

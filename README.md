@@ -1,4 +1,4 @@
-# FPV Drone over 4G (QuadroFleet + Masina V3)
+# FPV Drone over 4G (QuadroFleet + MasinaV3)
 
 ## Overview
 
@@ -6,14 +6,15 @@ This project provides a step-by-step guide to building an FPV drone capable of l
 It streams live video to a remote computer with latency typically under 100 ms.
 
 The drone is controlled via a gamepad (Xbox or PlayStation) or a standard RC transmitter connected to the ground station (computer) via USB.
-Key features include live video with on-screen telemetry, GPS tracking on an interactive map, and automated safety behaviors in the event of connectivity loss.
+Key features include live video with on-screen telemetry, GPS tracking on an interactive map, and automated safety behaviors in the event of
+connectivity loss.
 
 ## Features
 
 * **Low Latency Video:** Real-time video feed with latency <100 ms.
-* **Connection Loss Handling:** Automatic hover, land, or Return-To-Home (RTH) when link is lost.
+* **Connection Loss Handling:** Automatic hover, land, or Return-To-Home (RTH) when a link is lost.
 * **Live GPS Tracking:** Displays real-time drone location using OpenStreetMap.
-* **Extended Range:** Significantly longer range compared to traditional 2.4GHz radio systems by using cellular networks.
+* **Extended Range:** Significantly longer range compared to traditional 2.4 GHz radio systems by using cellular networks.
 * **On-Screen Display (OSD):** Telemetry such as battery voltage, compass heading, GPS coordinates, speed, and altitude is overlaid on the video.
 
 ## System Architecture
@@ -24,28 +25,35 @@ Key features include live video with on-screen telemetry, GPS tracking on an int
 
 2. **Ground Station — *QuadroFleet* (Operator Side)**
 
-   * Establishes a secure VPN tunnel to the drone using WireGuard.
-   * Reads joystick input (throttle, pitch, roll, yaw) from a connected gamepad or RC transmitter.
-   * Encodes input into CRSF channel frames and sends them to the drone via UDP.
-   * Receives and decodes telemetry data from the drone.
-   * Overlays telemetry on the live video stream and updates the drone's position on an interactive map.
+    * Establishes a secure VPN tunnel to the drone using WireGuard.
+    * Reads joystick input (throttle, pitch, roll, yaw, etc.) from a connected gamepad or RC transmitter.
+    * Encodes input into CRSF channel frames and sends them to the drone via UDP.
+    * Receives and decodes telemetry data from the drone.
+    * Overlays telemetry on the live video stream and updates the drone's position on an interactive map.
 
 3. **Drone**
 
-   * Connects to the ground station over WireGuard VPN.
-   * Receives CRSF control frames via UDP and forwards them to the flight controller via UART.
-   * Collects telemetry from the flight controller and sends it back to the ground station over UDP.
-   * Streams the video feed in H.265 format to the ground station using UDP.
+    * Connects to the ground station over WireGuard VPN.
+    * Receives CRSF control frames via UDP and forwards them to the flight controller via UART.
+    * Collects telemetry from the flight controller and sends it back to the ground station over UDP.
+    * Streams the video feed in H.265 format to the ground station using UDP.
 
 4. **Safety & Resilience**
 
-   * If the connection is lost for more than 250 ms (configurable), the drone switches to hover mode.
-   * If communication is not restored within 5 seconds (configurable), the drone performs an automatic landing or Return-To-Home (RTH), based on flight controller settings.
+    * If the connection is lost for more than 250 ms (configurable), the drone switches to hover mode.
+    * If communication is not restored within 5 seconds (configurable), the drone performs an automatic landing or Return-To-Home (RTH), based on
+      flight controller settings.
 
 ## Legal Compliance Notice:
-**This device lets you control drones over 4G networks, making long-distance control possible. But before you jump into using this technology, it's essential to know the rules and regulations in your country. In many places, like Europe and the US, there are strict laws about how drones can be used. For example, flying a drone beyond your line of sight (VLOS) might be restricted unless you have special permissions. It's strongly recommended to check the laws and regulations where you plan to use your drone. It's your responsibility to follow the rules and ensure you're flying legally. Breaking these rules can lead to legal trouble, so stay safe and fly responsibly!**
+
+**This device lets you control drones over 4G networks, making long-distance control possible. But before you jump into using this technology, it's
+essential to know the rules and regulations in your country. In many places, like Europe and the US, there are strict laws about how drones can be
+used. For example, flying a drone beyond your line of sight (VLOS) might be restricted unless you have special permissions. It's strongly recommended
+to check the laws and regulations where you plan to use your drone. It's your responsibility to follow the rules and ensure you're flying legally.
+Breaking these rules can lead to legal trouble, so stay safe and fly responsibly!**
 
 ## Images
+
 ![Front](images/front.png "Front")
 ![Left](images/left.png "Left")
 ![Right](images/right.png "Right")
@@ -80,7 +88,7 @@ Before getting started, ensure the following requirements are met:
 11. Wires and connectors TODO
 
 | Category               | Components Included                   | Approx. Cost (€)       |
-| ---------------------- | ------------------------------------- |------------------------|
+|------------------------|---------------------------------------|------------------------|
 | **Drone Frame & Core** | Frame, Motors, FC + ESC, Props, GPS   | 174 €                  |
 | **Video System**       | Camera module, 4G modem, antenna      | 69 €                   |
 | **Power System**       | Buck converter, battery (3S–6S)       | 22–92 €                |
@@ -88,281 +96,217 @@ Before getting started, ensure the following requirements are met:
 |                        |                                       | **Total: \~275–345 €** |
 
 ## Wiring
+
 ![Wiring](images/wiring.png "Wiring")
 
 ## Setup
-### Preparing the SD Card
-* Download Raspberry Pi Imager from the [official website](https://www.raspberrypi.com/software/).
-* Insert the MicroSD card into your computer's card reader.
-* Open Raspberry Pi Imager and select the OS: **Raspberry Pi OS (Legacy 32-bit) Lite**.
-* Set your username and password.
-* Configure Wi-Fi settings.
-* Save your settings and click Write to flash the SD card.
-* Eject the SD card and insert it into your Raspberry Pi.
 
-### Preparing the Raspberry Pi
-1. Plug the camera to the CSI port.
-2. Power it on.
-3. SSH into the raspberry pi.
-4. Enable the legacy camera interface and serial port using: `sudo raspi-config` and navigate to **Interface Options**
-    1. Legacy Camera > Yes
-    2. Serial Port > No > Yes
-    3. Back > Finish > Yes
-5. Update the OS: 
-```
-sudo apt update && sudo apt upgrade -y
-sudo apt-get install git proftpd python3-pip libboost-all-dev build-essential libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-pulseaudio autoconf automake libtool pkg-config libraspberrypi-dev -y
-```
-6. Reboot: `sudo reboot` and ssh again
-7. Install libraries
-```
-git clone https://github.com/thaytan/gst-rpicamsrc.git
-cd gst-rpicamsrc/
-./autogen.sh --prefix=/usr --libdir=/usr/lib/arm-linux-gnueabihf/
-make
-sudo make install
-cd
+### Preparing the Client firmware for OpenIPC
 
-wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.75.tar.gz
-tar -xzvf bcm2835-1.75.tar.gz
-cd bcm2835-1.75
-./configure
-make
-sudo make install
-cd
-```
+1. You need some Linux-based system to compile the OpenIPC firmware, Ubuntu is recommended.
+2. Download the OpenIPC firmware from [OpenIPC official repository](https://github.com/OpenIPC/firmware.git)
+3. Install compilers:
+   ```
+   sudo apt install g++-arm-linux-gnueabihf
+   ```
+4. Download QuadroFleet-Masina project (`opt` branch) from [GitHub](https://github.com/beep-systems/quadrofleet-masina.git)
+5. Build the client by running the following commands:
+   ```
+   cd quadrofleet-masina/client
+   make clean
+   make
+   ```
+6. Copy and replace the `quadrofleet-masina/client/drop` files from the QuadroFleet-Masina project to the OpenIPC firmware root folder.
+7. Build the OpenIPC firmware by running the following commands:
+   ```
+   cd firmware
+   make
+   ```
+8. Select `SSC30KQ_4G` or `SSC338Q_4G` as the target device and wait till the end of building.
+9. The firmware will be generated in the `firmware/output/images` folder. The file names will be something like `rootfs.squashfs.ssc30kq` and
+   `uImage.ssc30kq`.
+10. How to flash these files, you can find in the [OpenIPC wiki](https://github.com/OpenIPC/wiki/blob/master/en/installation.md)
+11. Since the image files are slightly non-standard in size, you must manually specify the block sizes for kernel and rootfs. Size of images (
+    `0x1fdd68` or `0x8ea000`) ay be different (`192.168.178.66` is local tftp server).
+   ```
+   setenv serverip 192.168.178.66
+   setenv kernsize 0x300000
+   setenv rootaddr 0x350000
+   setenv rootsize 0xA00000
+   setenv rootmtd 10240k
+   
+   setenv bootargs 'console=ttyS0,115200 panic=20 root=/dev/mtdblock3 init=/init mtdparts=NOR_FLASH:256k(boot),64k(env),3072k(kernel),${rootmtd}(rootfs),-(rootfs_data) LX_MEM=${memlx} mma_heap=mma_heap_name0,miu=0,sz=${memsz}'
+   saveenv
+   tftp 0x21000000 uImage.ssc30kq
+   sf probe 0; sf erase 0x50000 0x300000; sf write 0x21000000 0x50000 0x1fdd68
+   
+   tftp 0x21000000 rootfs.squashfs.ssc30kq
+   sf probe 0; sf erase 0x350000 0xA00000; sf write 0x21000000 0x350000 0x8ea000
+   saveenv
+   reset
+   ```
+12. Alternatively, you can download the precompiled firmware from
+    the [QuadroFleet-Masina repository](https://quadrofleet.com/downloads/firmware/ssc30kq.bin) and flash it to the camera
+    using [CH341A](https://de.aliexpress.com/item/1005006530290946.html) and [NeoProgrammer 2.2.0.10](https://quadrofleet.com/downloads/np.zip).
+   ```
+   Device: GD25Q128x [3.3V]
+   Type: SPI NOR 25xx
+   BitSize: 128 Mbits
+   Manuf: GIGADEVICE
+   Size: 16777216 Bytes
+   Page: 256 Bytes
+   ```
+13. If you later want to update firmware, you can do it like that (`192.168.178.66` is a local webserver):
+   ```
+   cd /tmp
+   curl -O http://192.168.178.66/rootfs.squashfs.ssc30kq
+   curl -O http://192.168.178.66/uImage.ssc30kq
 
-### Modem Configuration
+   soc=$(fw_printenv -n soc)
+   sysupgrade --kernel=/tmp/uImage.${soc} --rootfs=/tmp/rootfs.squashfs.${soc} -z --force_ver -n
+   ```
+14. After flashing, the camera will boot into OpenIPC firmware. You can access the web interface by the IP address given by DHCP.
+15. If you need to make some changes to the camera settings, you can do it directly in the web interface.
+
+### Preparing the EC25-EU Modem (activating Ethernet (RNDIS) interface)
+
+1. Plug the modem to the USB port of PC.
+2. Run Putty or any other terminal program and connect to the modem using COM-port and the following settings:
+   ```
+   Baud rate: 115200
+   Data bits: 8
+   Stop bits: 1
+   Parity: None
+   Flow control: None
+   ```
+3. Execute the following commands:
+   ```
+   AT+QCFG="usbnet",1
+   AT+CFUN=1,1
+   ```
+4. Wait for the modem to reboot.
+5. After reboot, the modem should be recognized as a network device.
+
+### OpenIPC settings
+
 * Insert the SIM card into the modem.
 * Connect the 4G modem to the raspberry pi using microUSB -> USB OTG cable.
 
-#### Method 1: ModemManager
-This is the simpler way of connecting to the 4G network, but it doesnt have any reconnect protection.
+#### Client configuration
+1. Open the web interface of the camera.
+2. Go to the **Extension** >> ***Wireguard* menu and set the following settings:
+   ```
+   host=10.253.0.3
+   LOCAL_TIMEOUT=300000
+   FAILSAFE_TIMEOUT=5000
+   STABILIZE_TIMEOUT=250
+   ELRS_SWITCH_PIN=0
+   CONTROL_PORT=2223
+   CAM_INFO_PORT=2224
+   ```
 
-`sudo crontab -e` -> choose 1 (nano) and to the bottom add: 
+#### WireGuard
 
-`@reboot sleep 30 && sudo mmcli -m 0 --enable && sudo mmcli -m 0 --simple-connect="apn=your_apn,ip-type=ipv4"`
-replacing the "your_apn" with your mobile service provider´s access point name.
+1. Install WireGuard on the VPS. Config file `/etc/wireguard/wg0.conf`:
+   ```
+   [Interface]
+   Address = 10.253.0.1/24
+   ListenPort = 51820
+   PrivateKey = sHT9ILg72IVOt+GSNE5+qPJ5Pl5FVOmt9pDMv5MPSFM=
+   
+   [Peer]
+   # Client Desktop
+   PublicKey = VGk8qCxEZeolwLZgoYl0AY+mb27pmQDURcmxUPzVtnk=
+   AllowedIPs = 10.253.0.3/32
+   
+   [Peer]
+   # Client OpenIPC
+   PublicKey = TmT7JJVDwzjQ23Tzu72wTCWHMjmr6m9lwa1BQAyW/Ec=
+   AllowedIPs = 10.253.0.2/32
+   ```
+2. Install WireGuard on the PC. Config file:
+   ```
+   [Interface]
+   PrivateKey = yIXhUB6z7/Wiz48bTarzAlNqgnUCtn2xNjOIbcPcjG4=
+   Address = 10.253.0.3/24
+   
+   [Peer]
+   PublicKey = lY2vOP917/9qPZxDwkSHdcHivaidsDEsE02pxmVV708=
+   AllowedIPs = 10.253.0.0/24
+   Endpoint = 217.154.192.211:51820
+   PersistentKeepalive = 25
+   ```
+3. Open the web interface of the camera.
+4. Go to the **Extension** >> ***Wireguard* menu and set the following settings:
+5. Update WireGuard config:
+   ```
+   [Interface]
+   PrivateKey = QEslU7u45Q66Ax203kr19qM9x9DgpMi+yPWSY0nhmXY=
+   
+   [Peer]
+   PublicKey = lY2vOP917/9qPZxDwkSHdcHivaidsDEsE02pxmVV708=
+   AllowedIPs = 10.253.0.0/24
+   Endpoint = 217.154.192.211:51820
+   PersistentKeepalive = 25
+   ```
+6. Update WireNetwork interface config:
+   ```
+   auto wg0
+   iface wg0 inet static
+      address 10.253.0.2
+      netmask 255.255.255.0
+      pre-up modprobe wireguard
+      pre-up ip link add dev wg0 type wireguard
+      pre-up wg setconf wg0 /etc/wireguard.conf
+      post-down ip link del dev wg0
+   ```
 
-Save the file by holding `Ctrl+X`, then press `Y`
->To find your provider's access point name insert the SIM card to your phone. And navigate to mobile network settings, here you should find it.
+#### Video stream settings
+1. Open the web interface of the camera.
+2. Go to the **Majestic** >> ***Settings* menu and set the following settings:
+3. Video0 settings:
+   ```
+   Video codec: h265
+   Video resolution: 960x720
+   Video frame rate: 60
+   Video bitrate: 1024
+   ```
+4. Or (optional) you can use **Camera runtime settings**:
+   ```
+   FPS: 60
+   Bitrate: 1024 kbps
+   Video resolution: 960x720 4:3
+   ```
 
-#### Method 2: NetworkManager (recommended)
-* If you have usb ethernet adapter and usb hub you can use that to connect the raspberry pi to your network and skip to step: *Edit the NetworkManager config: sudo nano /etc/NetworkManager/NetworkManager.conf*
-* If not make a nmconnection file for your wifi, I highly recommend creating separate wifi network just for the drone so you can disable it when not debugging/setting it up, otherwise it might use wifi instead of the 4g modem and you will lose connection when trying to fly somewhere.
+### Flight controller
 
+#### Channel mapping
+   ```
+   CH1		Axis Roll:                          AXIS_X
+   CH2		Axis Pitch:                         AXIS_Y
+   CH3		Axis Throttle:                      AXIS_Z
+   CH4		Axis Yaw:                           AXIS_RX
+   
+   CH5		Switch LT (Armed):                  AXIS_THROTTLE
+   CH6		Switch LB (Acro, Horizon, Angle):   AXIS_RY
+   CH7		Switch RT (Alt hold):               AXIS_RUDDER
+   CH8		Switch RB (Fail safe):              AXIS_RZ
+   ```
 
-Create a new connection file: `sudo nano /etc/NetworkManager/system-connections/debug` and paste, replacing the `ssid` and `psk` with your own:
+### QuadroFleet Android application
+
+## Some random stuff
 ```
-[connection]
-id=debug
-uuid=f1c34425-a556-4b27-9ed1-0f9dc6bdec74
-type=wifi
-
-[wifi]
-mode=infrastructure
-ssid=debug
-
-[wifi-security]
-key-mgmt=wpa-psk
-psk=debugpassword
-
-[ipv4]
-method=auto
-
-[ipv6]
-ip6-privacy=2
-method=auto
-
-[proxy]
-```
-Save the file by holding `Ctrl+X`, then press `Y`
-
-Modify the permissions: `sudo chmod 600 /etc/NetworkManager/system-connections/debug`
-
-Edit the NetworkManager config: `sudo nano /etc/NetworkManager/NetworkManager.conf`
-
-Remove everything and paste:
-```
-[main]
-plugins=ifupdown,keyfile
-dhcp=internal
-
-[ifupdown]
-managed=true
-```
-Save the file by holding `Ctrl+X`, then press `Y`
-
-Disable wpa_supplicant and enable NetworkManager:
-```
-sudo systemctl disable dhcpcd && sudo systemctl disable wpa_supplicant && sudo systemctl enable NetworkManager && sudo reboot &
-```
-The system will reboot. So ssh back into the raspberry pi.
-
-Now create the connection file for the modem: `sudo nmcli c add type gsm ifname '*' con-name MOBILE apn your_apn connection.autoconnect-priority 20` replacing the `your_apn` with your mobile service provider´s access point name.
-
->To find your provider's access point name insert the SIM card to your phone. And navigate to mobile network settings, here you should find it.
-
-Check if the modem is active by typing `nmcli` and you should get something like this:
-```
-ttyUSB0: connected to MOBILE
-    "Huawei Mobile Broadband"
-wlan0: connected to your_wifi
-    "Broadcom BCM43438 combo and Bluetooth Low Energy"
-```
-### Connecting to home
-#### Method 1: PiTunnel (recommended)
-* Open https://www.pitunnel.com create an account and follow instrucions.
-* Ensure UDP ports 2222-2224 are open on your router.
-
-#### Method 2: WireGuard VPN (use if you have linux server/pc at home)
-* Setup WireGuard server on your home network: https://www.pivpn.io
-* Open udp port on your router (default: 51820)
-* add a client using `pivpn -a drone`
-* copy the file to /etc/wireguard/wg0.conf on the raspberry pi using `sudo nano /etc/wireguard/wg0.conf` and add `PersistentKeepalive = 25` at the bottom
-Enable the service on raspberry pi:
-```
-sudo systemctl enable wg-quick@wg0.service
-sudo systemctl daemon-reload
-sudo systemctl start wg-quick@wg0.service
-```
-
-### Setting up Dynamic DNS
-Setting up Dynamic DNS (DDNS) allows you to avoid constantly changing the IP address whenever your network restarts. If your router supports DDNS, you can set it up directly. For example, you can create a free account on [No-IP](www.noip.com) and add your login credentials to your router's DDNS settings.
-
->If your router doesn't support DDNS, look up alternative methods and tutorials online to achieve this.
-
-### Testing
-
-At this point we should have working video stream over 4G.
-So let's test it. First make sure we are connected to the 4G network by turning off the wifi network we setup just for this or if you used usb ethernet adapter unplug it.
-
-Open [PiTunnel](https://www.pitunnel.com/devices) devices tab to verify your Raspberry Pi is online.
-
-Click on Open Remote Terminal, enter your Pi's credentials, and run the command sudo nmcli. You should see:
-```
-ttyUSB0: connected to MOBILE
-    "Huawei Mobile Broadband"
-```
-Enter the following GStreamer command, replacing your_ddns with your DDNS or [public IP address](http://checkip.amazonaws.com): 
-`gst-launch-1.0 rpicamsrc bitrate=500000 preview=false ! video/x-h264,width=480, height=360,framerate=30/1 ! h264parse ! rtph264pay config-interval=1 pt=96 ! udpsink host=your_ddns port=2222`
-
-
-On your computer navigate to your gstreamer folder, the default should be: `C:\gstreamer\1.0\msvc_x86_64\bin` open a terminal here by holding `Shift` and `Right click` and click on Open in Terminal/Open powershell window here.
-Paste this command to the terminal: `gst-launch-1.0.exe udpsrc port=2222 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! fpsdisplaysink sync=false`
-And video window should appear and everything should be working.
->  If nothing opens, check for errors on the Raspberry Pi. Otherwise ensure your firewall isn't blocking the port 2222. If using a third-party antivirus, disable its firewall. Then go to **Windows Defender Firewall with Advanced Security** settings. Now on top left click on Inbound Rules and in the top right click New Rule > Port > UDP, Specific remote ports: 2222-2224 > Allow the connection > name it whatever you like > Finish. Repeat the same in Outbound Rules.
-
-### Autostart video
-Here you can choose whether you also want to record the video to a SD card.
-
-#### Stream only
-Create the stream service: `sudo nano /etc/systemd/system/cam_stream.service`
-```
-[Unit]
-Description=Camera Stream
-After=NetworkManager.service
-
-[Service]
-ExecStart=gst-launch-1.0 rpicamsrc rotation=180 bitrate=0 quantisation-parameter=32 preview=false ! video/x-h264,width=480,height=360,framerate=40/1 ! h264parse ! rtph264pay config-interval=1 pt=96 ! udpsink host=your_ddns port=2222
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-Save the file by holding `Ctrl+X`, then press `Y`
-Enable the service: `sudo systemctl enable cam_stream.service`
-
-#### Stream and record
-Create bash script that record the video with time as the filename: `sudo nano stream_and_save.sh`
-```
-#!/bin/bash
-
-# Generate a timestamp
-timestamp=$(date +"%Y%m%d_%H%M%S")
-
-# Define the filename with the timestamp
-filename="/home/pi/videos/video_$timestamp.mkv"
-
-# Run the GStreamer pipeline
-gst-launch-1.0 rpicamsrc rotation=180 bitrate=0 quantisation-parameter=32 preview=false ! \
-    video/x-h264,width=480,height=360,framerate=40/1 ! h264parse ! \
-    tee name=t ! \
-    queue ! rtph264pay config-interval=1 pt=96 ! udpsink host=your_ddns port=2222 \
-    t. ! \
-    queue ! matroskamux ! filesink location=$filename
+gst-launch-1.0 udpsrc port=10900 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! d3dvideosink sync=false
+---
+gst-launch-1.0 udpsrc port=10900 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! avdec_h265 ! d3dvideosink sync=false
+---
+Here im testing EG25 to EG25 stream using wireguard server
+Right (good) : gst-launch-1.0 udpsrc port=2222 ! application/x-rtp,encoding-name=H265,payload=96  ! rtph265depay ! avdec_h265 ! fpsdisplaysink sync=false
+Left: gst-launch-1.0 udpsrc port=2222   ! application/x-rtp,encoding-name=H265,payload=96   ! rtpjitterbuffer ! rtph265depay   ! avdec_h265   ! fpsdisplaysink sync=false
+---
 
 ```
-Modify the script permissions: `sudo chmod +x stream_and_save.sh`
-
-Create a folder for videos: `sudo mkdir videos`
-
-Create the stream service: `sudo nano /etc/systemd/system/cam_stream.service`
-```
-[Unit]
-Description=Camera Stream
-After=NetworkManager.service
-
-[Service]
-ExecStart=sh /home/pi/stream_and_save.sh
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-Enable the service: `sudo systemctl enable cam_stream.service`
-
-### Controls and telemetry (Pi)
-Download the source: `git clone https://github.com/danielbanar/MasinaV3.git`
-
-Enter the folder: `cd MasinaV3/client`
-Edit the DDNS to yours: `sudo nano client.cpp` by changing the string on this line `#define HOSTNAME "your_ddns"`
-
-Compile it by running: `make`
-Move it to home folder: `cd` and then
-`cp MasinaV3/client client -r`
-
-Create a new service: `sudo nano /etc/systemd/system/client.service`
-```
-[Unit]
-Description=UDP Client
-After=NetworkManager.service
-
-[Service]
-ExecStart=sudo /home/pi/client/client
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-
-### Controls and telemetry (PC)
-Download the repository on your PC and open the solution file in Visual Studio: `pc\UDP_Server\UDP_Server.sln`.
-
-Compile the project, preferably in **Release, x64**.
-
-### Video
-Add the gstreamer folder to your PATH environment variable by running this command as an administrator, or wherever you installed it.
-
-`setx PATH "%PATH%;C:\gstreamer\1.0\mingw_x86_64\bin"`
-
-#### Now you have two choices:
-1. Run one of these gstreamer commands: 
-```
--No frame info
-gst-launch-1.0.exe udpsrc port=2222 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! autovideosink sync=false
-
--With frame info
-gst-launch-1.0.exe udpsrc port=2222 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! fpsdisplaysink sync=false
-
--Frame info with scaled font (change the resolution to your own)
-gst-launch-1.0.exe udpsrc port=2222 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! videoscale ! video/x-raw,width=1280,height=960 ! fpsdisplaysink sync=false
-```
-2. Create a executable by compiling the solution: `pc\UDP_Server\UDP_Video.sln`.
-
 
 ## Troubleshooting
 [Discord](https://discord.gg/3YTfeUXQ7p)

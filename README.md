@@ -54,9 +54,9 @@ Breaking these rules can lead to legal trouble, so stay safe and fly responsibly
 
 ## Images
 
-![Front](images/front.png "Front")
-![Left](images/left.png "Left")
-![Right](images/right.png "Right")
+![Front](images/opened.jpg "Opened")
+![Left](images/left.jpg "Left")
+![Right](images/right.jpg "Right")
 
 ## Prerequisites
 

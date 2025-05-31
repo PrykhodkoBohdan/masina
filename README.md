@@ -3,7 +3,7 @@
 ## Overview
 
 This project provides a step-by-step guide to building an FPV drone capable of long-range operation over a 4G network.
-It streams live video to a remote computer with latency typically under 100 ms.
+It streams live video and telemetry to a remote computer/smartphone with latency typically under 100 ms.
 
 The drone is controlled via a gamepad (Xbox or PlayStation) or a standard RC transmitter connected to the ground station (computer) via USB.
 Key features include live video with on-screen telemetry, GPS tracking on an interactive map, and automated safety behaviors in the event of
@@ -104,12 +104,12 @@ Before getting started, ensure the following requirements are met:
 ### Preparing the Client firmware for OpenIPC
 
 1. You need some Linux-based system to compile the OpenIPC firmware, Ubuntu is recommended.
-2. Download the OpenIPC firmware from [OpenIPC official repository](https://github.com/OpenIPC/firmware.git)
+2. Download the OpenIPC firmware from [official repository](https://github.com/OpenIPC/firmware.git).
 3. Install compilers:
    ```
    sudo apt install g++-arm-linux-gnueabihf
    ```
-4. Download QuadroFleet-Masina project (`opt` branch) from [GitHub](https://github.com/beep-systems/quadrofleet-masina.git)
+4. Download QuadroFleet-Masina project (`opt` branch) from [GitHub](https://github.com/beep-systems/quadrofleet-masina.git).
 5. Build the client by running the following commands:
    ```
    cd quadrofleet-masina/client
@@ -127,7 +127,7 @@ Before getting started, ensure the following requirements are met:
    `uImage.ssc30kq`.
 10. How to flash these files, you can find in the [OpenIPC wiki](https://github.com/OpenIPC/wiki/blob/master/en/installation.md)
 11. Since the image files are slightly non-standard in size, you must manually specify the block sizes for kernel and rootfs. Size of images (
-    `0x1fdd68` or `0x8ea000`) ay be different (`192.168.178.66` is local tftp server).
+    `0x1fdd68` or `0x8ea000`) may be different, `192.168.178.66` is IP of local tftp server.
    ```
    setenv serverip 192.168.178.66
    setenv kernsize 0x300000
@@ -146,7 +146,7 @@ Before getting started, ensure the following requirements are met:
    reset
    ```
 12. Alternatively, you can download the precompiled firmware from
-    the [QuadroFleet-Masina repository](https://quadrofleet.com/downloads/firmware/ssc30kq.bin) and flash it to the camera
+    the [QuadroFleet website](https://quadrofleet.com/downloads/firmware/ssc30kq.bin) and flash it to the camera
     using [CH341A](https://de.aliexpress.com/item/1005006530290946.html) and [NeoProgrammer 2.2.0.10](https://quadrofleet.com/downloads/np.zip).
    ```
    Device: GD25Q128x [3.3V]
@@ -156,7 +156,10 @@ Before getting started, ensure the following requirements are met:
    Size: 16777216 Bytes
    Page: 256 Bytes
    ```
-13. If you later want to update firmware, you can do it like that (`192.168.178.66` is a local webserver):
+13. If you later want to update firmware, you can do it directly on OpenIPC camera.
+    But first you need to connect to it via Ethernet cable.
+    `192.168.178.66` is IP of a local webserver with new images.
+    Terminal on the camera:
    ```
    cd /tmp
    curl -O http://192.168.178.66/rootfs.squashfs.ssc30kq
@@ -170,7 +173,7 @@ Before getting started, ensure the following requirements are met:
 
 ### Preparing the EC25-EU Modem (activating Ethernet (RNDIS) interface)
 
-1. Plug the modem to the USB port of PC.
+1. Plug the modem to the USB port of the PC.
 2. Run Putty or any other terminal program and connect to the modem using COM-port and the following settings:
    ```
    Baud rate: 115200
@@ -184,30 +187,48 @@ Before getting started, ensure the following requirements are met:
    AT+QCFG="usbnet",1
    AT+CFUN=1,1
    ```
+    * `AT+QCFG="usbnet",1` enables the RNDIS interface.
+    * `AT+CFUN=1,1` reboots the modem.
 4. Wait for the modem to reboot.
 5. After reboot, the modem should be recognized as a network device.
 
+### Make the wiring
+
+* You need two cables
+
 ### OpenIPC settings
 
-* Insert the SIM card into the modem.
-* Connect the 4G modem to the raspberry pi using microUSB -> USB OTG cable.
+* Before sending the drone to the field, you need to set up the camera and Masina client app.
+* Configure WireGuard server.
+* Launch desktop-station or phone application
 
-#### Client configuration
+#### Masina client configuration
+
 1. Open the web interface of the camera.
 2. Go to the **Extension** >> ***Wireguard* menu and set the following settings:
    ```
    host=10.253.0.3
    LOCAL_TIMEOUT=300000
-   FAILSAFE_TIMEOUT=5000
+   FAILSAFE_TIMEOUT=10000
    STABILIZE_TIMEOUT=250
    ELRS_SWITCH_PIN=0
    CONTROL_PORT=2223
    CAM_INFO_PORT=2224
    ```
+    * `10.253.0.3` is the IP address of the PC or smartphone inside VPN running the QuadroFleet application.
+    * `LOCAL_TIMEOUT` is the time in milliseconds after which the drone will switch to ELRS mode if the connection is lost (optional).
+    * `FAILSAFE_TIMEOUT` is the time in milliseconds after which the drone will switch to FAILSAFE mode if the connection is lost.
+    * `STABILIZE_TIMEOUT` is the time in milliseconds after which the drone will switch to hover mode if the connection is lost.
+    * `ELRS_SWITCH_PIN` is the GPIO pin to which the ELRS switch is connected.
+    * `CONTROL_PORT` is the port number on which the QuadroFleet application will listen for incoming UDP packets.
+    * `CAM_INFO_PORT` is the port number on which the QuadroFleet application will listen for incoming UDP packets with camera information.
 
 #### WireGuard
 
-1. Install WireGuard on the VPS. Config file `/etc/wireguard/wg0.conf`:
+1. Install WireGuard on the VPS or local PC.
+   How to generate keys you can find [hier](https://www.wireguard.com/quickstart/).
+   Config file
+   `/etc/wireguard/wg0.conf`:
    ```
    [Interface]
    Address = 10.253.0.1/24
@@ -215,7 +236,7 @@ Before getting started, ensure the following requirements are met:
    PrivateKey = sHT9ILg72IVOt+GSNE5+qPJ5Pl5FVOmt9pDMv5MPSFM=
    
    [Peer]
-   # Client Desktop
+   # Client Desktop/Phone
    PublicKey = VGk8qCxEZeolwLZgoYl0AY+mb27pmQDURcmxUPzVtnk=
    AllowedIPs = 10.253.0.3/32
    
@@ -224,7 +245,7 @@ Before getting started, ensure the following requirements are met:
    PublicKey = TmT7JJVDwzjQ23Tzu72wTCWHMjmr6m9lwa1BQAyW/Ec=
    AllowedIPs = 10.253.0.2/32
    ```
-2. Install WireGuard on the PC. Config file:
+2. Install WireGuard on the PC or smartphone. Config file:
    ```
    [Interface]
    PrivateKey = yIXhUB6z7/Wiz48bTarzAlNqgnUCtn2xNjOIbcPcjG4=
@@ -262,6 +283,7 @@ Before getting started, ensure the following requirements are met:
    ```
 
 #### Video stream settings
+
 1. Open the web interface of the camera.
 2. Go to the **Majestic** >> ***Settings* menu and set the following settings:
 3. Video0 settings:
@@ -269,18 +291,19 @@ Before getting started, ensure the following requirements are met:
    Video codec: h265
    Video resolution: 960x720
    Video frame rate: 60
-   Video bitrate: 1024
+   Video bitrate: 256
    ```
 4. Or (optional) you can use **Camera runtime settings**:
    ```
    FPS: 60
-   Bitrate: 1024 kbps
+   Bitrate: 256 kbps
    Video resolution: 960x720 4:3
    ```
 
 ### Flight controller
 
 #### Channel mapping
+
    ```
    CH1		Axis Roll:                          AXIS_X
    CH2		Axis Pitch:                         AXIS_Y
@@ -296,6 +319,7 @@ Before getting started, ensure the following requirements are met:
 ### QuadroFleet Android application
 
 ## Some random stuff
+
 ```
 gst-launch-1.0 udpsrc port=10900 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! avdec_h264 ! d3dvideosink sync=false
 ---

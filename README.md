@@ -1,7 +1,67 @@
-masinaclient (OpenIPC / SigmaStar) customСпеціалізований клієнт для камер на базі SigmaStar (тестовано на SSC338Q / SSC30kq), призначений для передачі сигналів керування та телеметрії через мережу (LTE/USB модем, VPN/WireGuard).Основні можливостіCRSF Bridge: Прокидає UART (/dev/ttyS2) ↔ UDP для передачі команд керування (RC).MAVLink Bridge: Прокидає UART (/dev/ttyS3) ↔ UDP для зв'язку з польотним контролером.Telemetry: Відправка телеметрії 1Hz (Температура CPU, швидкість RX/TX KB/s, RSSI/SNR).Advanced Failsafe: Багаторівнева логіка безпеки (Stage 1 / Stage 2) з таймаутами.Приклад запуску (Example)Bash./masinaclient host=192.172.89.253 CONTROL_PORT=2223 CAM_INFO_PORT=2224 MAVLINK_BAUD=115200 \
-FS_ENABLED=0 LINK_LOST_MS=5000 \
-FAILSAFE_PWM_US=0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 \
-FS_STAGE1_AFTER_MS=5000 FS_STAGE1_SET=3:1400 \
-FS_STAGE2_AFTER_MS=10000 FS_STAGE2_SET=5:900 \
-LOCAL_TIMEOUT=0 ELRS_SWITCH_PIN=0
-Налаштування FailsafeПараметрОписFS_ENABLED1 — увімкнути, 0 — вимкнути логіку Stage Failsafe.LINK_LOST_MSТаймаут (мс) без RC пакетів (26B) для входу в Failsafe.FAILSAFE_PWM_US16 значень PWM. 0 = hold_last (тримати останнє значення).FS_STAGE1_AFTER_MSЧас (мс) після входу в Failsafe до активації Stage 1.FS_STAGE1_SETПерезапис каналів для Stage 1. Формат: ch:pwm,ch:pwm.FS_STAGE2_AFTER_MSЧас (мс) після входу в Failsafe до активації Stage 2.FS_STAGE2_SETПерезапис каналів для Stage 2 (перекриває Stage 1).Функція Long Loss (Optional)LOCAL_TIMEOUT: Час (мс) критичної втрати зв'язку для виконання gpio clear.ELRS_SWITCH_PIN: Номер GPIO піна на камері для скидання (reset).Логіка роботи Failsafe (Behavior)Normal режим: Працює, поки стабільно надходять RC пакети (26B) від наземної станції.Вхід у Failsafe: Якщо пакети відсутні довше за LINK_LOST_MS, активуються значення з FAILSAFE_PWM_US.Stage 1: Через FS_STAGE1_AFTER_MS застосовуються додаткові оверрайди (наприклад, вирівнювання або повернення).Stage 2: Через FS_STAGE2_AFTER_MS застосовуються фінальні оверрайди (наприклад, аварійне зниження).Відновлення: Щойно зв'язок з'являється — усі оверрайди миттєво скидаються, система повертається в Normal.Розробка ведеться для систем QuadroFleet. Тестовано на SSC30kq.
+# masinaclient (OpenIPC / SigmaStar) (custom)
+
+Клієнт для OpenIPC камер на SigmaStar, який:
+- прокидає **CRSF (UART /dev/ttyS2) ↔ UDP** (RC/commands)
+- прокидає **MAVLink (UART /dev/ttyS3) ↔ UDP**
+- шле **телеметрію 1Hz** (CPU temp, RX/TX KB/s, RSSI/SNR)
+- має **failsafe** з базовими PWM та **stage1/stage2** (перехід через таймаути)
+
+> Типове застосування: LTE/USB модем → WireGuard → ground station.
+
+---
+
+## Example config (`/root/config.txt`)
+
+```ini
+-host=192.172.89.253
+-CONTROL_PORT=2223
+-CAM_INFO_PORT=2224
+-MAVLINK_BAUD=115200
+
+-FS_ENABLED=0
+-LINK_LOST_MS=5000
+-FAILSAFE_PWM_US=0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+-FS_STAGE1_AFTER_MS=5000
+-FS_STAGE1_SET=3:1400
+-FS_STAGE2_AFTER_MS=10000
+-FS_STAGE2_SET=5:900
+
+-LOCAL_TIMEOUT=0
+-ELRS_SWITCH_PIN=0
+-Failsafe parameters
+-FS_ENABLED — 1 увімкнути stage-failsafe, 0 вимкнути
+
+-LINK_LOST_MS — скільки мс без RC (26B) → вхід у failsafe
+
+-FAILSAFE_PWM_US — 16 PWM значень, 0 = hold_last
+
+-FS_STAGE1_AFTER_MS — мс після входу в failsafe → активувати stage1
+
+-FS_STAGE1_SET — overrides ch:pwm,ch:pwm (pwm=0 → скинути override)
+
+-FS_STAGE2_AFTER_MS — мс після входу в failsafe → активувати stage2
+
+-FS_STAGE2_SET — overrides stage2 (перекриває stage1)
+
+-Long loss (optional)
+-LOCAL_TIMEOUT — мс дуже довгої втрати RC → виконати gpio clear
+
+-0 = вимкнено (рекомендовано, якщо не треба)
+
+-ELRS_SWITCH_PIN — GPIO пін для gpio clear (на камері)
+
+-Failsafe logic (how it behaves)
+-Поки RC пакети (26B) йдуть з ground — працює normal режим.
+
+-Якщо RC немає довше ніж LINK_LOST_MS:
+
+-активується базовий failsafe (FAILSAFE_PWM_US, де 0=hold_last)
+
+-через FS_STAGE1_AFTER_MS застосовуються overrides stage1
+
+-через FS_STAGE2_AFTER_MS застосовуються overrides stage2 (може переписати stage1)
+
+-Коли зв’язок відновився — overrides скидаються і система повертається в normal.
+
+-Tested
+Тест було проведено на камері SSC30kq.
